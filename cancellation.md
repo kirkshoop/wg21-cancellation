@@ -1,19 +1,28 @@
 ---
-title: "Cancellation is not an Error"
-document: D1677R1
+title: "Cancellation is serendipitous-success"
+document: D1677R2
 date: today
 audience: 
-  - SG1 Concurrency and Parallelism
-  - SG13 IO
-  - LEWG Library Evolution
   - EWG Evolution
 author:
   - name: Kirk Shoop
     email: <kirkshoop@fb.com>
+  - name: Lisa Lippincott
+    email: <lisa.e.lippincott@gmail.com>
+  - name: Lewis Baker
+    email: <lbaker@fb.com>
 toc: true
 ---
 
 # Changelog
+
+__R2__
+
+ - [x] focus on EWG
+ - [x] add cancel_if section
+ - [x] add Strategy pattern section
+ - [x] add concurrency motivation
+ - [x] add Lisa Lippincott and Lewis Baker as co-authors
 
 __R1__
 
@@ -28,15 +37,51 @@ __R1__
 
 # Introduction
 
-One of the basis operations for any async function is cancellation. In this paper we explore the uses of cancellation to determine how to represent the result of a cancelled async function (the mechanism to signal a request for cancellation is covered by `stop_source` in C++20). In this paper a cancelled result is described as an instance of serendipitous-success ([Credits] go to Lisa Lippincott for coining this term).
+One of the basis operations for any async function is cancellation. In this paper we explore the uses of cancellation to determine how to represent the result of a cancelled async function (the mechanism to signal a request for cancellation is covered by `stop_source` in C++20). In this paper a cancelled result is described as an instance of serendipitous-success (Credit to Lisa Lippincott for coining this term).
 
-The ideas in this paper have proved to be exceedingly difficult to communicate. Each time this conversation is begun with a new person the same process of exploring the options to represent a cancelled result from a function is repeated. 
+## cancellation is not just for async functions
+
+In writing this paper it became clear that serendipitous-success is essential for all C++ functions. C++ already supports serendipitous-success within blocks using `goto` and the more constrained `break` and `continue` to skip over code without throwing an exception. However these do not compose in a way that allows a stack of functions to be unwound without throwing an exception. [@P0709R4] _Zero-overhead deterministic exceptions: Throwing values_ describes mechanisms that could possibly be extended to enable serendipitous-success for C++ functions. [@P1095R0] _Zero overhead deterministic failure - A unified mechanism for C and C++_ may allow serendipitous-success to be supported for C functions as well.
+
+## Dual of the Strategy pattern
+
+An effort is cancelled when some __higher-level__ goal __has already been satisfied__, rendering the current effort unnecessary, and possibly wasteful.
+
+This pattern is dual to the strategy pattern where we use exceptions. In the strategy pattern, we abort a strategy when we discover that a __low-level__ goal __cannot be satisfied__, rendering the current strategy impossible.
+
+Both patterns share the idea of early exit from an operation, and the thinking that has gone into the early exit model for exceptions also applies to cancellation.  In particular:
+
+- There are discrete points in the code where early exit may be initiated, i.e., throw statements or cancellation points.
+
+- Early exit, whether by exception or cancellation, must unwind the stack, executing destructors.
+
+- Some functions must guarantee to their callers that they will not exit early.
+
+On the other hand, some things are reversed:
+
+- The reason for an exception is governed at a low level, near the throw point.  The reason for cancellation is governed at a high level, near the cancellable effort.
+
+- High-level code must be prepared to accept failure for a wide variety of low level reasons. Low-level code must be prepared to be cancelled for a wide variety of high-level reasons.
+
+- When a sub-strategy of a larger strategy fails, we only abort the sub-strategy.  When a larger effort encompassing a sub-effort is rendered unnecessary, we abort the larger effort.
+
+## return value and exception representations of serendipitous-success
+
+The ideas in this paper have proved to be exceedingly difficult to communicate. Each time this conversation is begun with a new person the same process of exploring the existing options to represent a cancelled result from a function is repeated. 
 
 It is usually easy to discard using an `optional<T>` return value. This ease is due to the noise it introduces, so we can skip the much harder task of explaining that the return value is a poor representation of a cancelled result. 
 
 We cannot avoid the hard task of explaining why something like a `cancelled_error` exception or `error_code` is a poor representation of a cancelled result, because it does not appear at first glance to introduce a lot of noise. This paper is focused on explaining why errors are a bad way to represent a cancelled result.
 
-> NOTE: This paper does not depend on a particular representation of an async function. async functions may return Futures, Executors, Senders, Awaitables or something completely different. While this paper may use some of these representations in example code, they are used for exposition only.
+# Poll proposals
+
+- [] Does EWG wish to pursue a language representation of serendipitous-success?
+
+- [] Should serendipitous-success be limited to coroutines?
+
+- [] Should serendipitous-success be available to all functions?
+
+- [] n-way poll for which of the language proposals should be pursued?
 
 # Background
 
@@ -46,11 +91,21 @@ The `jthread` paper also defines `stop_source` and `stop_token`. A `stop_source`
 
 The `stop_source`/`stop_token` mechanism provides a way to request an async function to stop but does not specify how the async function completes without a value or an error. This paper will explore how an async function will complete when it is stopped and why that is not an exception or an error.
 
-The `jthread` and `fiber_token` use cases involve unwinding more conventional stack frames. This same functionality is also required in other realms. [@P1745R0] describes how to add support for unwinding a graph of coroutine frames without using errors. [@P1660R0] describes a solution for unwinding a graph of dependent tasks.
+The `jthread` and `fiber_token` use cases involve unwinding conventional stack frames. This same functionality is also required in other realms. [@P1745R0] describes how to add support for unwinding a graph of coroutine frames without using errors. [@P1660R0] describes a solution for unwinding a graph of dependent tasks.
 
 # Motivation
 
 Motivations for this paper include previously proposed features (eg. [stack unwinding]), existing practice (eg. [Callbacks]), and the needs of generic code and algorithms (eg. [Algorithms that cancel]). 
+
+## concurrency
+
+Concurrency is one of the many motivations for cancellation. 
+
+When there is no concurrency, then the result of a function call can be used to skip additional work and return early.
+
+When there is concurrency, then the result of an async function must also be able to skip related concurrent work and return early.
+
+Without cancellation, the related concurrent work must either be detached (which leads to a variety of problems around resource utilization and lifetime), or the related concurrent work must be joined before the result is produced (which causes increased resource utilization and latency).
 
 ## stack unwinding
 
@@ -237,7 +292,7 @@ Some examples:
 
  - the `when_any()` (aka `amb()`) algorithm which cancels the other producers once one of them produced a value (and in this case, emits no error).
  - the `when_all()` (aka `zip()`) algorithm which cancels the other producers when one completes with an error.
- - the `take_until()` algorithm which cancels the source when thetrigger completes and cancels the trigger when the source completes.
+ - the `take_until()` algorithm which cancels the source when the trigger completes and cancels the trigger when the source completes.
  - the `timeout()` algorithm which cancels the source when it does not produce a value before the timeout and then emits `timeout_error` (which is defined as part of the `timeout()` algorithm).
 
 ### `when_any()`
@@ -950,7 +1005,7 @@ When cancellation is not an error, algorithms that respond to errors are only co
 
 ## Callbacks
 
-As the most common pattern for expressing async, callbacks also need to be called with serendipitous-success. There is a lot to be said about callbacks and ([@P1678R0], [latest](https://wg21.link/p1678)) is focused on callbacks. The following will cover only some of that larger topic.
+As the most common pattern for expressing async, callbacks also need to be called with serendipitous-success. There is a lot to be said about callbacks and ([@P1678R1], [latest](https://wg21.link/p1678)) is focused on callbacks. The following will cover only some of that larger topic.
 
 Examples of callbacks can be found in the networking TS [@N4771]. The completion signature for `async_accept()` is `void(error_code ec, socket_type s)`. This signature clearly displays that the first argument is used for the error channel and that the second argument is used for the value channel. Perhaps, if the completion is an object, the destructor of that object might be a signal that there was a serendipitous-success. 
 
@@ -1096,7 +1151,7 @@ While this value encoding seems natural for Range, it is not so palatable for `s
 
 Range (with size 0|1), `std::optional` and even `std::variant<std::monostate,..>` are ways to model optional values in C++. They are themselves values that provide access to a value or nothing. 
 
-It might seem that if cancellation is not an error that `std::optional` would allow cancellation to be composed into the return value rather than as an exception. This path was rejected previously because of the impact that it would have on code. all return values for all functions that could be cancelled or would use functions that could be cancelled would have to return `std::optional`. All callers of functions that returned `std::optional` would have to explicitly check, extract the value or forward on the empty `std::optional`. This wrapping and unwrapping is expensive at runtime and messy in the code and very error prone (the cancellation may not propagate when it should). These are all reasons that C++ exceptions have a separate channel and thus motivate a separate channel for serendipitous-success.
+It might seem that if cancellation is not an error that `std::optional` would allow cancellation to be composed into the return value rather than as an exception. This path was rejected previously because of the impact that it would have on code. all return values for all functions that could be cancelled or would use functions that could be cancelled would have to return `std::optional`. All callers of functions that returned `std::optional` would have to explicitly check, extract the value or forward on the empty `std::optional`. This wrapping and unwrapping is expensive at runtime and messy in the code and very error prone (the cancellation may not propagate when it should). These are all reasons that C++ exceptions have a separate channel and the same reasons motivate a separate channel for serendipitous-success.
 
 ## Examples
 
@@ -1879,6 +1934,89 @@ void grow(vector<int>& v){
    - depends on TLS state to detect success and fail, which may not be available on all platforms. Also, the detection can be confused when exceptions are transported or continuations resumed within the scope of an instance of the `scope_success` and `scope_fail` types.
    - there is no support for serendipitous-success and adding it would require adding more of the fragile TLS dependencies or a language feature.
 
+### cancel_if
+
+A different approach is to represent the cancellation as a boolean condition that evaluates to true when the desired result has been achieved and this will trigger the stack to unwind. Here is a syntax for a cancellable effort that uses a boolean condition:
+
+```cpp
+try
+    {
+    // cancellable effort…
+    }
+cancel_if ( condition )
+    {
+    // code to execute if the effort is cancelled
+    // due to this condition…
+    }
+```
+
+And for a cancellation point:
+
+cancel_if_possible();  // A library function. Another option would be to make it a statement and lose the parentheses.
+
+
+> "I’m not particularly attached to any of the keywords here. I’m only reusing “try” out of parsimony. Bjarne has said that “try”  wasn’t in the original design for exceptions, but just added because people felt uncomfortable introducing a block without a keyword to head it."
+> _Lisa Lippincott_
+
+A simplistic approximation of the behavior could be expressed with setjmp/longjmp if longjmp respected destructors:
+
+```cpp
+jmp_buf buf;
+const auto cancel_if_possible = [&]()
+    {
+    try
+        {
+        if ( condition ) longjmp( buf, 1 );
+        }
+    catch ( ... )
+        {}
+    };
+
+if ( !setjmp( buf ) )
+    {
+    // cancellable effort…
+    }
+else
+    {
+    // code to execute if the effort is cancelled
+    // due to this condition…
+    }
+```
+
+Here’s the detailed behavior: each cancel_if block associates a “cancellation condition” and a handler block with a cancellable effort. The lifetime of the cancellation condition is the duration of the cancellable effort. If more than one cancellation condition is associated with the same effort, the lifetime of an earlier-declared condition starts before and ends after the lifetime of a later-declared condition. [This ordering is arbitrary.]
+
+During some parts of its lifetime, a cancellation condition may be “suspended.” During its lifetime, when not suspended, a cancellation condition is “active.” A cancellation condition is active at the start of its lifetime.
+
+The cancel_if_possible statement evaluates the active cancellation conditions, from eldest to youngest. If evaluation of a condition produces a true result, no further conditions are evaluated, the stack is unwound to the end of the associated cancellable effort, and control is transferred to the corresponding handler.  [Eldest-to-youngest because when a larger effort may be cancelled that includes all the younger cancellable efforts.]  If evaluation of a cancellation condition exits with an exception, the exception is handled, and the condition is treated as if it had produced false. If no cancellation produces true, execution continues with the following statement.
+
+For each of the following events, each cancellation condition that is active at the start of the event is suspended for the duration of the event; after the event, such conditions are reactivated if their lifetime has not ended.
+- Stack unwinding
+- The evaluation of a cancellation condition
+- The execution of a noexcept function
+
+> [Here “noexcept” should be taken to mean “no early exit” — this will cause noexcept function to never be cancelled. This is preferred to introducing “nocancel” because the guarantee callers need doesn’t distinguish between exceptions and cancellation. This assumes that there is no use for guarantees of “no cancellation but maybe exceptions” or “no exceptions but maybe cancellation."  The name “noexcept” is unfortunate in this regard.]
+
+Just like we need exception_ptr to sneak exceptions across noexcept boundaries, we need a mechanism to sneak cancellation conditions across noexcept boundaries, but in the opposite direction. I think a library class will do the trick:
+
+class cancellation_test_functor
+    {
+    cancellation_test_functor() noexcept;
+        // Constructs a functor representing the cancellation conditions active at the time of construction.
+
+    cancellation_test_functor( const cancellation_test_functor& s ) noexcept;
+        // Constructs a functor representing the cancellation conditions represented by s.
+
+    bool operator() const noexcept;
+        // Evaluates the represented cancellation conditions, from eldest to youngest, stopping when one produces true.
+        // If the lifetime of any represented condition has ended, this function has undefined behavior.
+        // If any evaluated condition exits with an exception, it is treated as returning false.
+        // Returns true if any condition produces true; otherwise false.
+  };
+
+It is expected that this class can be implemented with just a pointer or two — it can just remember the point on the stack where it’s constructed (and use exception tables), or point to a range in a data structure tracking the stack of active conditions.
+
+This class doesn’t solve the synchronization issues of moving conditions from one thread to another. Since these conditions essentially use lambda-capture, that would be dangerous.  A mechanism to actively signal a cancellation request seems better than polling a condition across thread boundaries.  Perhaps an “I don’t need the answer to this” signal should be added to the future class.
+
 ### scope_success, scope_fail, scope_done blocks
 
 A language feature based on the `scope_guard` pattern would be another way to introduce support for fail/success/done interception.
@@ -1962,6 +2100,6 @@ This paper was influenced by hosts of people over decades.
  - __Lewis Baker__'s excellent `stop_source`/`stop_token` design in [@P0660R9]
  - _CppCon_, _CppNow_, _CppRussia_ and _CERN_ (and the people behind those including; __Jon Kalb__, __Bryce Adelstein-Lebach__, __Sergey Platonov__, __Axel Naumann__) for all the opportunities to communicate the vision for cancellation in C++
  - __Gor Nishanov__ for the excellent coroutines in C++20 and the shout-outs and support for rxcpp over the years.
- - __Lisa Lippincott__ for coining 'serendipitous-success' to explain what the result of cancellation is rather than what it is not.
+ - __Lisa Lippincott__ for coining 'serendipitous-success' to explain what the result of cancellation __is__ rather than what it is not and for contributing content to this paper.
 
 `
