@@ -451,6 +451,15 @@ struct when_any_sender {
 ---
 
 ```cpp
+//  --->
+//  --->
+//  --->
+//  --->
+//  --->
+//  --->
+//  --->
+//  --->
+
 struct fn {
   auto operator()(
     Sender auto s0, Sender auto s1) {
@@ -475,7 +484,9 @@ struct pipe_fn {
 
 struct fn {
   auto operator()(Sender auto s1) {
+    //  <---
     return pipe_fn<decltype(s1)>{s1};
+    //  <---
   }
 };
 
@@ -496,11 +507,11 @@ When some errors are supposed to terminate the operation early and others are no
 ```cpp
 namespace when_any_alg {
 
-
-
+// --->
+// --->
 template<class C>
 struct result {
-
+  // --->
   C c_;
   atomic<int> remain_ = 2;
   function<void(C)> r_;
@@ -557,12 +568,12 @@ struct when_any_callback {
     r_->defer();
   }
   void error(auto e) noexcept {
-
+    // --->
     if (stop_.request_stop()) {
       r_->r_ = [e] 
         (auto c) {c.error(e);};
     }
-
+    // --->
     r_->defer();
   }
   void done() noexcept {
@@ -591,9 +602,9 @@ struct when_any_callback {
     }
     r_->defer();
   }
-
-
-
+  // <---
+  // <---
+  // <---
 };
 ```
 
@@ -602,7 +613,7 @@ struct when_any_callback {
 ```cpp
 template<class S0, class S1>
 struct when_any_sender {
-
+  //   --->
   S0 s0_;
   S1 s1_;
   void submit(Callback auto c) {
@@ -642,7 +653,7 @@ struct when_any_sender {
 ```cpp
 template<class S1>
 struct pipe_fn {
-
+  //   --->
   S1 s1_;
   auto operator()(Sender auto s0) {
     return when_any_sender<
@@ -651,7 +662,7 @@ struct pipe_fn {
 };
 
 struct fn {
-
+  //   --->
   auto operator()(Sender auto s1) {
     return pipe_fn<decltype(s1)>{s1};
   }
@@ -729,7 +740,7 @@ auto foo() {
 ```cpp
 auto foo() {
   return get_data(server0) |
-
+    //  <---
     when_any(should_fail{}, 
       get_data(server1));
 }
@@ -787,6 +798,12 @@ struct retry_sender {
       retry_callback<S, decltype(c)>{s_, c});
   }
 };
+
+//  --->
+//  --->
+//  --->
+//  --->
+//  --->
 
 struct fn {
   auto operator()(Sender auto s) {
@@ -858,13 +875,18 @@ namespace retry_alg {
 
 template<class S, class C>
 struct retry_callback {
+  //  --->
   S s_;
   C c_;
   void operator()(auto... vn) {
     c_(vn...);
   }
   void error(auto) noexcept {
+    //  --->
     s_.submit(*this);
+    //  --->
+    //  --->
+    //  --->
   }
   void done() noexcept {
     c_.done();
@@ -873,20 +895,26 @@ struct retry_callback {
 
 template<class S>
 struct retry_sender {
+  //  --->
   S s_;
   void submit(Callback auto c) {
     s_.submit(
       retry_callback<S, decltype(c)>{s_, c});
+      //  --->
   }
 };
 
+//  --->
 struct pipe_fn {
+  //  --->
   auto operator()(Sender auto s) {
     return retry_sender<decltype(s)>{s};
+    //  --->
   }
 };
 
 struct fn {
+  //  --->
   auto operator()() {
     return pipe_fn{};
   }
@@ -916,6 +944,9 @@ struct retry_callback {
       c_.error(e);
     }
   }
+  //  <---
+  //  <---
+  //  <---
 };
 
 template<class P, class S>
@@ -994,7 +1025,7 @@ auto foo() {
 ```cpp
 auto foo() {
   return get_data() | 
-
+    // <---
     retry(should_retry{});
 }
 ```
@@ -1166,7 +1197,7 @@ An imaginary world, where a sync function can complete with serendipitous-succes
 ```cpp
 std::optional<int> op() {
   if (!has_feature()) {
-    return {};
+    return std::nullopt; // <--->
   }
   return feature();
 }
@@ -1177,7 +1208,7 @@ void foo() {
   if (!i) {
     return;
   }
-  // use *i..
+  // use *i..               <--->
 } // jumps here when the feature is 
   // not supported
 ```
@@ -1195,6 +1226,9 @@ int op() {
 void foo() {
   // ..
   auto i = op();
+  // <---
+  // <---
+  // <---
   // use i..
 } // jumps here when the feature is 
   // not supported
@@ -1211,7 +1245,7 @@ void foo() {
 ```cpp
 int op() {
   if (!has_feature()) {
-    throw unsupported_error();
+    throw unsupported_error(); // <--->
   }
   return feature();
 }
@@ -1220,8 +1254,8 @@ void foo() {
   // ..
   try {
     auto i = op();
-    // use *i..
-  } catch(const unsupported_error&) {
+    // use i..
+  } catch(const unsupported_error&) { 
     return;
   }
 } // jumps here when the feature is 
@@ -1240,8 +1274,12 @@ int op() {
 
 void foo() {
   // ..
+  // <---
   auto i = op();
   // use i..
+  // <---
+  // <---
+  // <---
 } // jumps here when the feature is 
   // not supported
 ```
@@ -1284,7 +1322,8 @@ int main() {
 
 ```cpp
 using void_value = tuple<>;
-auto h(stop_token stop) 
+auto h(stop_token stop)   //  <--->
+  //  --->
   -> optional<void_value> {
   if(stop.stop_requested()) {
     return nullopt;
@@ -1309,7 +1348,8 @@ auto h() {
 ---
 
 ```cpp
-auto g(stop_token stop) 
+auto g(stop_token stop)   //   <--->
+  // ---->
   -> optional<int> {
   int count = 0;
   stop_source stopInner;
@@ -1353,7 +1393,7 @@ auto g(auto h) {
 ---
 
 ```cpp
-void f() {
+void f() {               //   <--->
   exception_ptr ex;
   stop_source stop;
   optional<int> count;
@@ -1550,9 +1590,9 @@ auto h() {
   return [](stop_token stop) 
     -> optional<void_value> {
     if(stop.stop_requested()) {
-      return nullopt;
+      return nullopt;    //   <--->
     }
-    return void_value{};
+    return void_value{}; //   <--->
   };
 }
 ```
@@ -1560,8 +1600,10 @@ auto h() {
 #### Imaginary
 
 ```cpp
+// <---
 auto h() {
   return [](stop_token stop) {
+    // <---
     if(stop.stop_requested()) {
       break return;
     }
@@ -1575,15 +1617,16 @@ auto h() {
 ```cpp
 auto g(auto h) {
   return [h](stop_token stop) 
-    -> optional<int> {
+    -> optional<int> {  //    <--->
     int count = 0;
     stop_source stopInner;
     for (;;) {
       if (stop.stop_requested()) {
         stopInner.request_stop();
       }
-      if (!h(stopInner.get_token())) {
-        break;
+      // --->
+      if (!h(stopInner.get_token())) { // >
+        break;                      // <-->
       }
       if (++count >= 9) {
         stopInner.request_stop();
@@ -1623,22 +1666,26 @@ auto g(auto h) {
 void f(auto g) {
   exception_ptr ex;
   stop_source stop;
-  optional<int> count;
+  optional<int> count;         //   <---->
   thread t{[&](){
     this_thread::sleep_for(100ms);
     stop.request_stop();
   }};
+  auto print = [&]() {
+    t.join();
+    auto w = (
+      !!count ? "completed" :
+      !!ex ? "failed" :
+      !count ?                  //   <---->
+        "stopped" : "invalid");
+    printf("which %s, count %d", w, *count);
+  };
+  scope_guard {print();}
   try {
     count = g(stop.get_token());
   } catch(...) {
     ex = current_exception();
   }
-  auto w = (
-    !!count ? "completed" :
-    !!ex ? "failed" :
-    !count ? "stopped" : "invalid");
-  printf("which %s, count %d", w, *count);
-  t.join();
 }
 ```
 
@@ -1646,26 +1693,26 @@ void f(auto g) {
 void f(auto g) {
   exception_ptr ex;
   stop_source stop;
-  optional<int> count;
+  int count = 0;
   thread t{[&](){
     this_thread::sleep_for(100ms);
     stop.request_stop();
   }};
   auto print = [&]() {
+    t.join();
     auto w = (
       !!count ? "completed" :
       !!ex ? "failed" :
-      !count ? "stopped" : "invalid");
-    printf("which %s, count %d", w, *count);
+      stop.stop_requested() ? 
+        "stopped" : "invalid");
+    printf("which %s, count %d", w, count);
   };
+  scope_guard {print();}
   try {
-    scope_done {print();}
     count = g(stop.get_token());
   } catch(...) {
     ex = current_exception();
   }
-  print();
-  t.join();
 }
 ```
 
@@ -1684,7 +1731,7 @@ struct stopped_exception : exception {};
 auto h() {
   return [](stop_token stop) {
     if(stop.stop_requested()) {
-      throw stopped_exception{};
+      throw stopped_exception{}; // <--->
     }
     return ;
   };
@@ -1695,6 +1742,7 @@ auto h() {
 #### Imaginary
 
 ```cpp
+// <---
 auto h() {
   return [](stop_token stop) {
     if(stop.stop_requested()) {
@@ -1718,6 +1766,7 @@ auto g(auto h) {
         stopInner.request_stop();
       }
       try {
+        // --->
         h(stopInner.get_token());
       } catch (const stopped_exception&) {
         break;
@@ -1744,6 +1793,8 @@ auto g(auto h) {
       {
         scope_done {break;}
         h(stopInner.get_token());
+        // <---
+        // <---
       }
       if (++count >= 9) {
         stopInner.request_stop();
@@ -1765,18 +1816,21 @@ void f(auto g) {
     this_thread::sleep_for(100ms);
     stop.request_stop();
   }};
+  auto print = [&]() {
+    t.join();
+    auto w = (
+      !!count ? "completed" :
+      !!ex ? "failed" :
+      !count ? "stopped" : "invalid");
+    printf("which %s, count %d", w, *count);
+  };
+  scope_guard {print();}
   try {
     count = g(stop.get_token());
   } catch (const stopped_exception&) {
   } catch(...) {
     ex = current_exception();
   }
-  auto w = (
-    !!count ? "completed" :
-    !!ex ? "failed" :
-    !count ? "stopped" : "invalid");
-  printf("which %s, count %d", w, *count);
-  t.join();
 }
 ```
 
@@ -1790,20 +1844,20 @@ void f(auto g) {
     stop.request_stop();
   }};
   auto print = [&]() {
+    t.join();
     auto w = (
       !!count ? "completed" :
       !!ex ? "failed" :
       !count ? "stopped" : "invalid");
     printf("which %s, count %d", w, *count);
   };
+  scope_guard {print();}
   try {
-    scope_done {print();}
     count = g(stop.get_token());
+    // <----
   } catch(...) {
     ex = current_exception();
   }
-  print();
-  t.join();
 }
 ```
 
@@ -1983,35 +2037,45 @@ else
     }
 ```
 
-Here’s the detailed behavior: each cancel_if block associates a “cancellation condition” and a handler block with a cancellable effort. The lifetime of the cancellation condition is the duration of the cancellable effort. If more than one cancellation condition is associated with the same effort, the lifetime of an earlier-declared condition starts before and ends after the lifetime of a later-declared condition. [This ordering is arbitrary.]
+Here’s the detailed behavior: each `cancel_if` block associates a “cancellation condition” and a handler block with a cancellable effort. The lifetime of the cancellation condition is the duration of the cancellable effort. If more than one cancellation condition is associated with the same effort, the lifetime of an earlier-declared condition starts before and ends after the lifetime of a later-declared condition. [This ordering is arbitrary.]
 
 During some parts of its lifetime, a cancellation condition may be “suspended.” During its lifetime, when not suspended, a cancellation condition is “active.” A cancellation condition is active at the start of its lifetime.
 
-The cancel_if_possible statement evaluates the active cancellation conditions, from eldest to youngest. If evaluation of a condition produces a true result, no further conditions are evaluated, the stack is unwound to the end of the associated cancellable effort, and control is transferred to the corresponding handler.  [Eldest-to-youngest because when a larger effort may be cancelled that includes all the younger cancellable efforts.]  If evaluation of a cancellation condition exits with an exception, the exception is handled, and the condition is treated as if it had produced false. If no cancellation produces true, execution continues with the following statement.
+The `cancel_if_possible` statement evaluates the active cancellation conditions, from eldest to youngest. If evaluation of a condition produces a true result, no further conditions are evaluated, the stack is unwound to the end of the associated cancellable effort, and control is transferred to the corresponding handler.  [Eldest-to-youngest because when a larger effort may be cancelled that includes all the younger cancellable efforts.]  If evaluation of a cancellation condition exits with an exception, the exception is handled, and the condition is treated as if it had produced false. If no cancellation produces true, execution continues with the following statement.
 
 For each of the following events, each cancellation condition that is active at the start of the event is suspended for the duration of the event; after the event, such conditions are reactivated if their lifetime has not ended.
+
 - Stack unwinding
 - The evaluation of a cancellation condition
 - The execution of a noexcept function
 
 > [Here “noexcept” should be taken to mean “no early exit” — this will cause noexcept function to never be cancelled. This is preferred to introducing “nocancel” because the guarantee callers need doesn’t distinguish between exceptions and cancellation. This assumes that there is no use for guarantees of “no cancellation but maybe exceptions” or “no exceptions but maybe cancellation."  The name “noexcept” is unfortunate in this regard.]
 
+> [Alternatively, terminate when a noexcept function is cancelled, and provide an explicit way to suspend all cancellation conditions]
+
 Just like we need exception_ptr to sneak exceptions across noexcept boundaries, we need a mechanism to sneak cancellation conditions across noexcept boundaries, but in the opposite direction. I think a library class will do the trick:
 
+```cpp
 class cancellation_test_functor
     {
     cancellation_test_functor() noexcept;
-        // Constructs a functor representing the cancellation conditions active at the time of construction.
+        // Constructs a functor representing the cancellation conditions 
+        // active at the time of construction.
 
     cancellation_test_functor( const cancellation_test_functor& s ) noexcept;
-        // Constructs a functor representing the cancellation conditions represented by s.
+        // Constructs a functor representing the cancellation conditions 
+        // represented by s.
 
     bool operator() const noexcept;
-        // Evaluates the represented cancellation conditions, from eldest to youngest, stopping when one produces true.
-        // If the lifetime of any represented condition has ended, this function has undefined behavior.
-        // If any evaluated condition exits with an exception, it is treated as returning false.
+        // Evaluates the represented cancellation conditions, from eldest 
+        // to youngest, stopping when one produces true.
+        // If the lifetime of any represented condition has ended, 
+        // this function has undefined behavior.
+        // If any evaluated condition exits with an exception, 
+        // it is treated as returning false.
         // Returns true if any condition produces true; otherwise false.
   };
+```
 
 It is expected that this class can be implemented with just a pointer or two — it can just remember the point on the stack where it’s constructed (and use exception tables), or point to a range in a data structure tracking the stack of active conditions.
 
