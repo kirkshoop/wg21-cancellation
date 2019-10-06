@@ -1329,6 +1329,7 @@ auto h(stop_token stop)   //  <--->
     return nullopt;
   }
   return void_value{};
+  //  --->
 }
 ```
 
@@ -1365,6 +1366,7 @@ auto g(stop_token stop)   //   <--->
     }
   }
   return count;
+  //  --->
 }
 ```
 
