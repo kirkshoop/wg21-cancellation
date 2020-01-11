@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Cancellation is not an Error</title>
+    <title>Cancellation is a serendipitous success</title>
     <meta charset="utf-8">
     <link rel="stylesheet" href="./fonts.css"/>
     <link rel="stylesheet" href="./mermaid.forest.css">
@@ -27,6 +27,9 @@
             font-weight: normal;
         }
         .remark-code, .remark-inline-code { font-family: 'Droid Sans Mono'; }
+        .remark-inline-code {
+          color:#585260;
+        }
         .remark-slide-content {
             padding-bottom: 4em;
         }
@@ -68,9 +71,6 @@
             padding: 5px;
             border: 1px solid steelblue;
         }
-        td {
-            color: #7f0000;
-        }
         th {
             border-bottom: 3px solid steelblue;
             color: black;
@@ -82,8 +82,29 @@
         .accent {
             color: seagreen
         }
+        .hidden {
+            visibility: hidden
+        }
 
+        .scale-p5 {
+          transform: scale(0.5);
+          transform-origin: top left;
+        }
+        .scale-p75 {
+          transform: scale(0.75);
+          transform-origin: top left;
+        }
+        .scale-p8 {
+          transform: scale(0.8);
+          transform-origin: top left;
+        }
+        .scale-p9 {
+          transform: scale(0.9);
+          transform-origin: top left;
+        }
 
+        .image-10 img {width: 10%}
+        .image-20 img {width: 20%}
         .image-30 img {width: 30%}
         .image-40 img {width: 40%}
         .image-50 img {width: 50%}
@@ -95,15 +116,40 @@
         .column:last-of-type {float:right}
 
         .split-30 .column:first-of-type {width: 30%}
-        .split-30 .column:last-of-type {width: 70%}
+        .split-30 .column:last-of-type {width: 69%}
+        .split-30:after {
+          clear: both;
+          content: '';
+          display: block;
+        }
         .split-40 .column:first-of-type {width: 40%}
-        .split-40 .column:last-of-type {width: 60%}
+        .split-40 .column:last-of-type {width: 59%}
+        .split-40:after {
+          clear: both;
+          content: '';
+          display: block;
+        }
         .split-50 .column:first-of-type {width: 50%}
-        .split-50 .column:last-of-type {width: 50%}
+        .split-50 .column:last-of-type {width: 49%}
+        .split-50:after {
+          clear: both;
+          content: '';
+          display: block;
+        }
         .split-60 .column:first-of-type {width: 60%}
-        .split-60 .column:last-of-type {width: 40%}
+        .split-60 .column:last-of-type {width: 39%}
+        .split-60:after {
+          clear: both;
+          content: '';
+          display: block;
+        }
         .split-70 .column:first-of-type {width: 70%}
-        .split-70 .column:last-of-type {width: 30%}
+        .split-70 .column:last-of-type {width: 29%}
+        .split-70:after {
+          clear: both;
+          content: '';
+          display: block;
+        }
 
         .column ul:first-of-type {
             margin: .2em
@@ -142,15 +188,296 @@
     <textarea hidden=true id="source">
 
 layout: true
-<div class="footer"><div class="flexcontainer"><span>.body[[[http://wg21.link/p1677r0](http://wg21.link/p1677r0)]]</span><span>.center[]</span><span>.body[&copy; 2019 Kirk Shoop ([github](http://github.com/kirkshoop) [twitter](http://twitter.com/kirkshoop))]</span></div></div>
-        
+<div class="footer"><div class="flexcontainer"><span>.body[[[http://wg21.link/p1677r2](http://wg21.link/p1677r2)]]</span><span>.center[]</span><span>.body[&copy; 2019 Kirk Shoop ([github](http://github.com/kirkshoop) [twitter](http://twitter.com/kirkshoop))]</span></div></div>
+
 ---
 
 class: middle
 
 .center[
 
-# P1677R0 - Cancellation is not an Error
+# P1677R2 - Cancellation is serendipitous success
+
+.accent[
+### Was: Cancellation is not an Error
+]
+
+]
+
+???
+
+> * 
+
+---
+
+class: middle
+
+.center[
+
+## Why is it hard to stop a running frame?
+
+.accent[
+### (requesting cancellation is solved, use `stop_source`/`stop_token`)
+]
+
+]
+
+???
+
+> * 
+
+---
+
+## papers
+
+- [P0660R4](http://wg21.link/P0660R4) is an earlier revision of the `jthread` paper that defined a `std::interrupted` exception and a
+`std::this_thread::throw_if_interrupted()` API. These were intended to exit an arbitrary scope using
+the exception mechanism.
+
+- [P0876R5](http://wg21.link/P0876R5) is an earlier revision of the `fiber_context` paper that defined a `std::unwind_exception` exception that would be thrown from `~fiber_context` if the fiber was suspended. These were intended to exit an arbitrary scope in the suspended fiber using
+the exception mechanism.
+
+- [P1662R0 - Async RAII](http://wg21.link/P1662R0) is a Cologne paper that describes how to exit an arbitrary scope in a suspended coroutine __without__ using the exception mechanism
+
+- [P0443R11 - Executors](http://wg21.link/P0443R11) is a Belfast paper that describes how to exit an active Sender __without__ using the exception mechanism
+
+***
+
+--
+
+- These papers are trying to express the same mechanism in different domains
+
+- `jthread` removed `std::interrupted` based on discussion in an SG1 meeting in Seattle ([wiki](http://wiki.edg.com/bin/view/ExecSeattle2018/MinutesDay2)) 
+
+- `fiber_context` removed `std::unwind_exception` after discussion in Kona and a subsequent platform-specific exception mechanism after discussion in Cologne
+
+???
+
+> * 
+
+---
+
+## Issues discussed for the exception mechanism approaches
+
+- noexcept functions .accent[cannot] be on the stack when `std::interrupted` is thrown
+
+- all functions that cross ABI boundaries, such as callbacks passed to C functions, like OS APIs, </br> .accent[must
+suppress] the `std::interrupted` exception
+
+- all `catch(...)` .accent[must rethrow], when the exception is `std::interrupted`
+
+- all `catch(...)` .accent[must be called] for `std::interrupted`, since many `catch(...)` are used to cleanup and restore invariants
+and some of those instances are in std lib implementations.
+
+- all `catch(const std::interrupted&)` .accent[must rethrow].
+
+It is interesting to note that the ABI boundary restriction .accent[conflicts with] the catch restrictions.
+
+???
+
+> * 
+
+---
+
+class: middle
+
+.center[
+
+## Why is stopping a running frame a success condition?
+
+.accent[
+### 
+]
+
+]
+
+???
+
+> * 
+
+---
+
+### Dual of the Strategy pattern
+
+.split-50[
+.column[
+### Cancellation
+#### An effort is cancelled when some .accent[higher-level] goal .accent[has already been satisfied], rendering the current effort unnecessary, and possibly wasteful.
+]
+.column[
+### Exception
+#### In the strategy pattern, we abort a strategy when we discover that a .accent[low-level] goal .accent[cannot be satisfied], rendering the current strategy impossible.
+]
+]
+???
+
+> * 
+---
+
+### Dual of the Strategy pattern
+
+Both patterns share the idea of early exit from an operation, and the thinking that has gone into the early exit
+model for exceptions also applies to cancellation. In particular:
+
+- There are discrete points in the code where early exit may be initiated, i.e., throw statements or cancellation
+points.
+
+- Early exit, whether by exception or cancellation, must unwind the stack, executing destructors.
+
+- Some functions must guarantee to their callers that they will not exit early.
+
+On the other hand, some things are reversed:
+
+- The reason for an exception is governed at a low level, near the throw point. The reason for cancellation is
+governed at a high level, near the cancellable effort.
+
+- High-level code must be prepared to accept failure for a wide variety of low level reasons. Low-level code
+must be prepared to be cancelled for a wide variety of high-level reasons.
+
+- When a sub-strategy of a larger strategy fails, we only abort the sub-strategy. When a larger effort
+encompassing a sub-effort is rendered unnecessary, we abort the larger effort.
+???
+
+> * 
+
+---
+
+### concurrency
+
+When there is no concurrency, then the result of a function call can be used to skip additional work and return
+early.
+
+```cpp
+void sequential() {
+  process_left();
+  if (stop_requested()) { return; }
+  process_right();
+}
+```
+
+When there is concurrency, then the result of an async function must also be able to skip related concurrent work
+and return early.
+
+```cpp
+void concurrent() {
+  sync_wait(
+    when_all(
+      process_left(), 
+      process_right()));
+}
+```
+
+???
+
+> * 
+
+---
+
+### sequence consumption
+
+When there is a generator, then the result of a function call can be used to skip additional work and return
+early.
+
+```cpp
+void sequential(auto values) {
+  for(auto&& value : values) {
+    process_left(value);
+    if (stop_requested()) { break; }
+    process_right(value);
+  }
+}
+```
+
+When there is an async_generator, then the result of an async function must also be able to skip related concurrent work
+and return early.
+
+```cpp
+void concurrent(auto values) {
+  sync_wait(
+    values |
+    transform([](auto&& value) {
+      return when_all(process_left(value), process_right(value));
+    }) | merge());
+}
+```
+
+???
+
+> * 
+
+---
+
+### sequence generation
+
+When there is a generator, then the result of a function call can be used to skip additional work and return
+early.
+
+```cpp
+generator<int> values() {
+    for (;;) {
+      co_yield next()); // return int
+      if (stop_requested()) { break; }
+    }
+    co_return; // return void
+}
+```
+
+When there is an async_generator, then the result of an async function must also be able to skip related concurrent work
+and return early.
+
+```cpp
+async_generator<int> values() {
+  for (;;) {
+    co_yield co_await next()); // return int
+    if (stop_requested()) { break; }
+  }
+  co_return; // return void
+}
+```
+
+???
+
+> * 
+
+---
+
+### options for unwind
+
+channel | example | notes
+--------|---------|------
+value-piggyback | `return optional<T>;` | .accent[generally avoided] <br/>because it clutters the success path
+error-piggyback | `throw cancellation_error();` | .accent[staunchly defended] <br/>because it does not clutter the success path </br> .accent[bad effects] because an exception does not </br> make a good success signal </br> would you use throw to exit a for loop instead of `break`?
+break | `[](){ `<br/>&nbsp;&nbsp;`for(;;) { `<br/>&nbsp;&nbsp;&nbsp;&nbsp;`f(); `<br/>&nbsp;&nbsp;&nbsp;&nbsp;`if (is_done()) {break; } `<br/>&nbsp;&nbsp;`} `<br/>`}` | `break` exits the for-loop with with something <br/>similar to serendipitous-success, but .accent[there is no feature] <br/>to break out of a function with serendipitous-success
+
+???
+
+> * 
+
+---
+
+### Conclusions
+
+- #### it should be considered an artifact of history that unwind is considered exceptional
+
+- #### a language mechanism for expressing successful-unwind independently from exceptional-unwind is needed
+
+  - #### a statement to initiate successful-unwind (`return break;`/`break return;`/`throw goto`)
+
+  - #### a means of using successful-unwind for control flow is needed (`scope_unwind`/`catch goto`)
+
+  - #### a means of creating a barrier to successful-unwind (`nounwind`/overload `noexcept`)
+
+???
+
+> * 
+
+---
+
+class: middle
+
+.center[
+
+## Questions?
 
 .accent[
 ### 
@@ -288,7 +615,7 @@ mechanism | notes
 
 ## Cancellation Signals
 
-### .accent[Cancellation-Report]
+### .accent[serendipitous-success]
 
 Consumer &lt;- Producer
 
@@ -296,9 +623,7 @@ channel | example | notes
 --------|---------|------
 value-piggyback | `return optional<T>;` | .accent[generally avoided] <br/>because it clutters the success path
 error-piggyback | `throw cancellation_error();` | .accent[staunchly defended] <br/>because it does not clutter the success path
-break | `[](){ `<br/>&nbsp;&nbsp;`for(;;) { `<br/>&nbsp;&nbsp;&nbsp;&nbsp;`f(); `<br/>&nbsp;&nbsp;&nbsp;&nbsp;`if (is_done()) {break; } `<br/>&nbsp;&nbsp;`} `<br/>`}` | `break` exits the for-loop with with something <br/>similar to cancellation-report, but .accent[there is no feature] <br/>to break out of a function with cancellation-report
-
-NOTE: cancellation-report is spelled _neither-a-result-nor-an-error_ in the paper
+break | `[](){ `<br/>&nbsp;&nbsp;`for(;;) { `<br/>&nbsp;&nbsp;&nbsp;&nbsp;`f(); `<br/>&nbsp;&nbsp;&nbsp;&nbsp;`if (is_done()) {break; } `<br/>&nbsp;&nbsp;`} `<br/>`}` | `break` exits the for-loop with with something <br/>similar to serendipitous-success, but .accent[there is no feature] <br/>to break out of a function with serendipitous-success
 
 ???
 
@@ -337,8 +662,8 @@ generator<int> fortyTwos() {
 .column[
 ```cpp
 // assumes that g.next()
-// completes with neither a result
-// nor an error
+// completes with 
+// serendipitous-success
 void foo() {
   auto g = fortyTwos();
   for(;;) {
@@ -511,8 +836,8 @@ auto f(auto source) {
 - `after` produces a timer that completes after 10 seconds
 - `take_until` takes two arguments, source and trigger, and the first one to complete .accent[signals a cancellation-request] to the other
 - `take_until` never propagates an error or value from the trigger
-- `take_until` .accent[signals a cancellation-report] when the trigger wins
-- `take_until` propagates the source (value|error|cancellation-report) when the source wins.
+- `take_until` .accent[signals a serendipitous-success] when the trigger wins
+- `take_until` propagates the source (value|error|serendipitous-success) when the source wins.
 ]
 ]
 
@@ -528,15 +853,15 @@ signal | `take_until` | `when_any`
 -------|--------------|-----------
 value | propagated from .accent[source], not trigger | propagated from .accent[first] to complete
 error | propagated from .accent[source], not trigger | propagated from .accent[first] to complete
-cancellation-report | propagated from .accent[source] and .accent[trigger] | propagated from .accent[first] to complete
+serendipitous-success | propagated from .accent[source] and .accent[trigger] | propagated from .accent[first] to complete
 
 --
 
-- These algorithms intentionally signalled cancellation-request and .accent[expect the result] to be cancellation-report.
+- These algorithms intentionally signalled cancellation-request and .accent[expect the result] to be serendipitous-success.
 
 --
 
-- These algorithms consider the expected cancellation-report to be on the .accent[success-path]
+- These algorithms consider the expected serendipitous-success to be on the .accent[success-path]
 
 --
 
@@ -569,11 +894,11 @@ auto f(auto source) {
 ]
 
 .column[
-`f` returns a task that will retry a task every second until it completes with value|error == server_unavailable|cancellation-report.
+`f` returns a task that will retry a task every second until it completes with value|error == server_unavailable|serendipitous-success.
 
 - `filter_error` takes two arguments, a source and a predicate
 - `filter_error` calls the predicate when an error occurs 
-- `filter_error` completes with cancellation-report when the predicate returns true
+- `filter_error` completes with serendipitous-success when the predicate returns true
 - `filter_error` otherwise propagates the source signal unchanged
 ]
 ]
@@ -605,12 +930,12 @@ auto f(auto source) {
 ]
 
 .column[
-`f` returns a task that will retry a task every second until it completes with value|error == server_unavailable|cancellation-report.
+`f` returns a task that will retry a task every second until it completes with value|error == server_unavailable|serendipitous-success.
 
 - `retry_when` takes two arguments, a source and a selector
 - `retry_when` calls the selector when an error occurs and starts the task the selector returns
 - `retry_when` starts the source when the value signal is received from the task returned from the selector
-- `retry_when` otherwise propagates the error|cancellation-report signals from the task returned from the selector
+- `retry_when` otherwise propagates the error|serendipitous-success signals from the task returned from the selector
 ]
 ]
 
@@ -637,11 +962,11 @@ auto f(auto source) {
 ]
 
 .column[
-`f` returns a task that will retry a task 3 times until it completes with value|cancellation-report.
+`f` returns a task that will retry a task 3 times until it completes with value|serendipitous-success.
 
 - `retry` takes two arguments, a source and a count
 - `retry` starts the source when the error signal is received from the source and the count is > 0
-- `retry` otherwise propagates the value|error|cancellation-report signals from the source
+- `retry` otherwise propagates the value|error|serendipitous-success signals from the source
 ]
 ]
 
@@ -657,7 +982,7 @@ signal | `filter_error` | `retry_when` | `retry`
 -------|----------------|--------------|--------
 value | propagated from .accent[source] | propagated from .accent[source] | propagated from .accent[source]
 error | .accent[source] when predicate returns false | delegated to the task returned from .accent[selector] | starts source .accent[count] times and otherwise propagates the error
-cancellation-report | propagated from .accent[source] | propagated from .accent[source] and from the task returned from .accent[selector] | propagated from .accent[source]
+serendipitous-success | propagated from .accent[source] | propagated from .accent[source] and from the task returned from .accent[selector] | propagated from .accent[source]
 
 --
 
@@ -665,7 +990,7 @@ cancellation-report | propagated from .accent[source] | propagated from .accent[
 
 --
 
-- `retry_when` and `retry` must only retry on errors, they must not retry on value|cancellation-report
+- `retry_when` and `retry` must only retry on errors, they must not retry on value|serendipitous-success
 ***
 ???
 
@@ -679,7 +1004,7 @@ signal | `filter_error` | `retry_when` | `retry`
 -------|----------------|--------------|--------
 value | propagated from .accent[source] | propagated from .accent[source] | propagated from .accent[source]
 error | .accent[source] when predicate returns false | delegated to the task returned from .accent[selector] | starts source .accent[count] times and otherwise propagates the error
-cancellation-report | propagated from .accent[source] | propagated from .accent[source] and from the task returned from .accent[selector] | propagated from .accent[source]
+serendipitous-success | propagated from .accent[source] | propagated from .accent[source] and from the task returned from .accent[selector] | propagated from .accent[source]
 
 - `filter_error` would otherwise define a filtered_error exception and emit filtered_error when the predicate was true
 
@@ -807,7 +1132,7 @@ It is interesting to note that the ABI boundary restriction .accent[conflicts wi
 
 - Many different domains require a facility to signal that there will be no value or error result from a function or task.
 
-- Libraries adding callbacks should have support for cancellation-report. The only paper in Cologne that defines a callback that supports this is [P1660R0](http://wg21.link/P1660R0). This would be a valid callback according to the definition in [P1660R0](http://wg21.link/P1660R0)
+- Libraries adding callbacks should have support for serendipitous-success. The only paper in Cologne that defines a callback that supports this is [P1660R0](http://wg21.link/P1660R0). This would be a valid callback according to the definition in [P1660R0](http://wg21.link/P1660R0)
 
 ```cpp
 struct my_callback {
@@ -833,7 +1158,7 @@ struct my_callback {
 
 ## Language
 
-The paper also contains imaginary language features that might represent cancellation-report in domains like `jthread` and `fiber_context`
+The paper also contains imaginary language features that might represent serendipitous-success in domains like `jthread` and `fiber_context`
 
 ???
 
@@ -866,15 +1191,26 @@ class: middle
     <script src="./element.js" type="text/javascript" >
     </script>
     <script src="./mermaid.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_HTMLorMML&delayStartupUntil=configured" type="text/javascript" >
+    </script>
     <script>
 
         var slideshow = remark.create({
             ratio: "16:9",
             highlightLanguage: "cpp",
-            highlightStyle: "github-gist",
+            highlightStyle: "atelier-cave-light",
             highlightLines: true,
             highlightSpans: true
         });
+
+        MathJax.Hub.Config({
+            displayAlign: "center",
+            tex2jax: {
+                skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+                inlineMath: [['$','$'], ['\\(','\\)']]
+            }
+        });
+        MathJax.Hub.Configured();
 
         mermaid.initialize({
           mermaid: {
