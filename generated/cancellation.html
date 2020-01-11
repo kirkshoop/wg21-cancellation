@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="generator" content="mpark/wg21" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <meta name="dcterms.date" content="2019-08-06" />
-  <title>Cancellation is not an Error</title>
+  <meta name="dcterms.date" content="2020-01-11" />
+  <title>Cancellation is serendipitous-success</title>
   <style>
       code{white-space: pre-wrap;}
       span.smallcaps{font-variant: small-caps;}
@@ -413,23 +413,20 @@ div#refs p { padding-left: 32px; text-indent: -32px; }
 <body>
 <div class="wrapper">
 <header id="title-block-header">
-<h1 class="title" style="text-align:center">Cancellation is not an Error</h1>
+<h1 class="title" style="text-align:center">Cancellation is serendipitous-success</h1>
 
 <table style="border:none;float:right">
   <tr>
     <td>Document #: </td>
-    <td>D1677R1</td>
+    <td>D1677R2</td>
   </tr>
   <tr>
     <td>Date: </td>
-    <td>2019-08-06</td>
+    <td>2020-01-11</td>
   </tr>
   <tr>
     <td style="vertical-align:top">Project: </td>
     <td>Programming Language C++<br>
-      SG1 Concurrency and Parallelism<br>
-      SG13 IO<br>
-      LEWG Library Evolution<br>
       EWG Evolution<br>
     </td>
   </tr>
@@ -437,6 +434,8 @@ div#refs p { padding-left: 32px; text-indent: -32px; }
     <td style="vertical-align:top">Reply-to: </td>
     <td>
       Kirk Shoop<br>&lt;<a href="mailto:kirkshoop@fb.com" class="email">kirkshoop@fb.com</a>&gt;<br>
+      Lisa Lippincott<br>&lt;<a href="mailto:lisa.e.lippincott@gmail.com" class="email">lisa.e.lippincott@gmail.com</a>&gt;<br>
+      Lewis Baker<br>&lt;<a href="mailto:lbaker@fb.com" class="email">lbaker@fb.com</a>&gt;<br>
     </td>
   </tr>
 </table>
@@ -447,57 +446,77 @@ div#refs p { padding-left: 32px; text-indent: -32px; }
 <h1 id="toctitle">Contents</h1>
 <ul>
 <li><a href="#changelog"><span class="toc-section-number">1</span> Changelog<span></span></a></li>
-<li><a href="#introduction"><span class="toc-section-number">2</span> Introduction<span></span></a></li>
-<li><a href="#background"><span class="toc-section-number">3</span> Background<span></span></a></li>
-<li><a href="#motivation"><span class="toc-section-number">4</span> Motivation<span></span></a><ul>
-<li><a href="#stack-unwinding"><span class="toc-section-number">4.1</span> stack unwinding<span></span></a><ul>
-<li><a href="#c-exception"><span class="toc-section-number">4.1.1</span> C++ exception<span></span></a></li>
-<li><a href="#non-cpp-exception"><span class="toc-section-number">4.1.2</span> non-cpp-exception<span></span></a></li>
+<li><a href="#introduction"><span class="toc-section-number">2</span> Introduction<span></span></a><ul>
+<li><a href="#cancellation-is-not-just-for-async-functions"><span class="toc-section-number">2.1</span> cancellation is not just for async functions<span></span></a></li>
+<li><a href="#dual-of-the-strategy-pattern"><span class="toc-section-number">2.2</span> Dual of the Strategy pattern<span></span></a></li>
+<li><a href="#return-value-and-exception-representations-of-serendipitous-success"><span class="toc-section-number">2.3</span> return value and exception representations of serendipitous-success<span></span></a></li>
 </ul></li>
-<li><a href="#algorithms-that-cancel"><span class="toc-section-number">4.2</span> Algorithms that cancel<span></span></a><ul>
-<li><a href="#when_any"><span class="toc-section-number">4.2.1</span> <code>when_any()</code><span></span></a></li>
+<li><a href="#poll-proposals"><span class="toc-section-number">3</span> Poll proposals<span></span></a></li>
+<li><a href="#background"><span class="toc-section-number">4</span> Background<span></span></a></li>
+<li><a href="#motivation"><span class="toc-section-number">5</span> Motivation<span></span></a><ul>
+<li><a href="#concurrency"><span class="toc-section-number">5.1</span> concurrency<span></span></a></li>
+<li><a href="#stack-unwinding"><span class="toc-section-number">5.2</span> stack unwinding<span></span></a><ul>
+<li><a href="#c-exception"><span class="toc-section-number">5.2.1</span> C++ exception<span></span></a></li>
+<li><a href="#non-cpp-exception"><span class="toc-section-number">5.2.2</span> non-cpp-exception<span></span></a></li>
 </ul></li>
-<li><a href="#algorithms-that-respond-to-errors"><span class="toc-section-number">4.3</span> Algorithms that respond to errors<span></span></a><ul>
-<li><a href="#a-generic-retry-algorithm"><span class="toc-section-number">4.3.1</span> a generic <code>retry()</code> algorithm<span></span></a></li>
+<li><a href="#algorithms-that-cancel"><span class="toc-section-number">5.3</span> Algorithms that cancel<span></span></a><ul>
+<li><a href="#when_any"><span class="toc-section-number">5.3.1</span> <code>when_any()</code><span></span></a></li>
 </ul></li>
-<li><a href="#callbacks"><span class="toc-section-number">4.4</span> Callbacks<span></span></a><ul>
-<li><a href="#destructor-style"><span class="toc-section-number">4.4.1</span> destructor style<span></span></a></li>
-<li><a href="#value-and-error-arguments-style"><span class="toc-section-number">4.4.2</span> value and error arguments style<span></span></a></li>
-<li><a href="#stdexpected-style"><span class="toc-section-number">4.4.3</span> <code>std::expected</code> style<span></span></a></li>
-<li><a href="#multiple-function-style"><span class="toc-section-number">4.4.4</span> multiple function style<span></span></a></li>
-<li><a href="#gratuitous"><span class="toc-section-number">4.4.5</span> gratuitous<span></span></a></li>
+<li><a href="#algorithms-that-respond-to-errors"><span class="toc-section-number">5.4</span> Algorithms that respond to errors<span></span></a><ul>
+<li><a href="#a-generic-retry-algorithm"><span class="toc-section-number">5.4.1</span> a generic <code>retry()</code> algorithm<span></span></a></li>
 </ul></li>
-<li><a href="#exception-noise"><span class="toc-section-number">4.5</span> Exception noise<span></span></a></li>
-<li><a href="#sync-functions-not-a-typo"><span class="toc-section-number">4.6</span> sync functions (not a typo)<span></span></a><ul>
-<li><a href="#coroutine-generator"><span class="toc-section-number">4.6.1</span> coroutine generator<span></span></a></li>
-<li><a href="#stdoptional"><span class="toc-section-number">4.6.2</span> <code>std::optional</code><span></span></a></li>
+<li><a href="#callbacks"><span class="toc-section-number">5.5</span> Callbacks<span></span></a><ul>
+<li><a href="#destructor-style"><span class="toc-section-number">5.5.1</span> destructor style<span></span></a></li>
+<li><a href="#value-and-error-arguments-style"><span class="toc-section-number">5.5.2</span> value and error arguments style<span></span></a></li>
+<li><a href="#stdexpected-style"><span class="toc-section-number">5.5.3</span> <code>std::expected</code> style<span></span></a></li>
+<li><a href="#multiple-function-style"><span class="toc-section-number">5.5.4</span> multiple function style<span></span></a></li>
+<li><a href="#gratuitous"><span class="toc-section-number">5.5.5</span> gratuitous<span></span></a></li>
 </ul></li>
-<li><a href="#examples"><span class="toc-section-number">4.7</span> Examples<span></span></a><ul>
-<li><a href="#fgh"><span class="toc-section-number">4.7.1</span> <code>f(g(h()))</code><span></span></a></li>
+<li><a href="#exception-noise"><span class="toc-section-number">5.6</span> Exception noise<span></span></a></li>
+<li><a href="#sync-functions-not-a-typo"><span class="toc-section-number">5.7</span> sync functions (not a typo)<span></span></a><ul>
+<li><a href="#coroutine-generator"><span class="toc-section-number">5.7.1</span> coroutine generator<span></span></a></li>
+<li><a href="#stdoptional"><span class="toc-section-number">5.7.2</span> <code>std::optional</code><span></span></a></li>
 </ul></li>
-</ul></li>
-<li><a href="#conclusions"><span class="toc-section-number">5</span> Conclusions<span></span></a><ul>
-<li><a href="#function-output"><span class="toc-section-number">5.1</span> Function output<span></span></a><ul>
-<li><a href="#values"><span class="toc-section-number">5.1.1</span> Values<span></span></a></li>
-<li><a href="#exceptions"><span class="toc-section-number">5.1.2</span> Exceptions<span></span></a></li>
-<li><a href="#multiplexing"><span class="toc-section-number">5.1.3</span> Multiplexing<span></span></a></li>
-</ul></li>
-<li><a href="#contrast-function-taking-a-callback-with-function"><span class="toc-section-number">5.2</span> Contrast function-taking-a-callback with function<span></span></a></li>
-</ul></li>
-<li><a href="#proposals"><span class="toc-section-number">6</span> Proposals<span></span></a><ul>
-<li><a href="#library"><span class="toc-section-number">6.1</span> Library<span></span></a></li>
-<li><a href="#language"><span class="toc-section-number">6.2</span> Language<span></span></a><ul>
-<li><a href="#co_done-catch_co_done"><span class="toc-section-number">6.2.1</span> co_done &amp; catch_co_done<span></span></a></li>
-<li><a href="#scope-library"><span class="toc-section-number">6.2.2</span> scope library<span></span></a></li>
-<li><a href="#scope_success-scope_fail-scope_done-blocks"><span class="toc-section-number">6.2.3</span> scope_success, scope_fail, scope_done blocks<span></span></a></li>
-<li><a href="#afterthought-converting-undefined-behaviour-to-defined-behaviour"><span class="toc-section-number">6.2.4</span> Afterthought: converting undefined behaviour to defined behaviour<span></span></a></li>
+<li><a href="#examples"><span class="toc-section-number">5.8</span> Examples<span></span></a><ul>
+<li><a href="#fgh"><span class="toc-section-number">5.8.1</span> <code>f(g(h()))</code><span></span></a></li>
 </ul></li>
 </ul></li>
-<li><a href="#credits"><span class="toc-section-number">7</span> Credits<span></span></a></li>
-<li><a href="#references"><span class="toc-section-number">8</span> References<span></span></a></li>
+<li><a href="#conclusions"><span class="toc-section-number">6</span> Conclusions<span></span></a><ul>
+<li><a href="#function-output"><span class="toc-section-number">6.1</span> Function output<span></span></a><ul>
+<li><a href="#values"><span class="toc-section-number">6.1.1</span> Values<span></span></a></li>
+<li><a href="#exceptions"><span class="toc-section-number">6.1.2</span> Exceptions<span></span></a></li>
+<li><a href="#multiplexing"><span class="toc-section-number">6.1.3</span> Multiplexing<span></span></a></li>
+</ul></li>
+<li><a href="#contrast-function-taking-a-callback-with-function"><span class="toc-section-number">6.2</span> Contrast function-taking-a-callback with function<span></span></a></li>
+</ul></li>
+<li><a href="#proposals"><span class="toc-section-number">7</span> Proposals<span></span></a><ul>
+<li><a href="#library"><span class="toc-section-number">7.1</span> Library<span></span></a></li>
+<li><a href="#language"><span class="toc-section-number">7.2</span> Language<span></span></a><ul>
+<li><a href="#co_done-catch_co_done"><span class="toc-section-number">7.2.1</span> co_done &amp; catch_co_done<span></span></a></li>
+<li><a href="#scope-library"><span class="toc-section-number">7.2.2</span> scope library<span></span></a></li>
+<li><a href="#cancel_if"><span class="toc-section-number">7.2.3</span> cancel_if<span></span></a></li>
+<li><a href="#scope_success-scope_fail-scope_done-blocks"><span class="toc-section-number">7.2.4</span> scope_success, scope_fail, scope_done blocks<span></span></a></li>
+<li><a href="#afterthought-converting-undefined-behaviour-to-defined-behaviour"><span class="toc-section-number">7.2.5</span> Afterthought: converting undefined behaviour to defined behaviour<span></span></a></li>
+</ul></li>
+</ul></li>
+<li><a href="#credits"><span class="toc-section-number">8</span> Credits<span></span></a></li>
+<li><a href="#references"><span class="toc-section-number">9</span> References<span></span></a></li>
 </ul>
 </div>
 <h1 id="changelog"><span class="header-section-number">1</span> Changelog<a href="#changelog" class="self-link"></a></h1>
+<p><strong>R2</strong></p>
+<ul>
+<li><input type="checkbox" disabled checked></input>
+focus on EWG</li>
+<li><input type="checkbox" disabled checked></input>
+add cancel_if section</li>
+<li><input type="checkbox" disabled checked></input>
+add Strategy pattern section</li>
+<li><input type="checkbox" disabled checked></input>
+add concurrency motivation</li>
+<li><input type="checkbox" disabled checked></input>
+add Lisa Lippincott and Lewis Baker as co-authors</li>
+</ul>
 <p><strong>R1</strong></p>
 <ul>
 <li><input type="checkbox" disabled checked></input>
@@ -518,27 +537,54 @@ add <code>f(g(h()))</code>, <code>generator</code> &amp; <code>retry</code> exam
 switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 </ul>
 <h1 id="introduction"><span class="header-section-number">2</span> Introduction<a href="#introduction" class="self-link"></a></h1>
-<p>One of the basis operations for any async function is cancellation. In this paper we explore the uses of cancellation to determine how to represent the result of a cancelled async function (the mechanism to signal a request for cancellation is covered by <code>stop_source</code> in C++20). In this paper a cancelled result is described as an instance of serendipitous-success (<a href="#credits">Credits</a> go to Lisa Lippincott for coining this term).</p>
-<p>The ideas in this paper have proved to be exceedingly difficult to communicate. Each time this conversation is begun with a new person the same process of exploring the options to represent a cancelled result from a function is repeated.</p>
+<p>One of the basis operations for any async function is cancellation. In this paper we explore the uses of cancellation to determine how to represent the result of a cancelled async function (the mechanism to signal a request for cancellation is covered by <code>stop_source</code> in C++20). In this paper a cancelled result is described as an instance of serendipitous-success (Credit to Lisa Lippincott for coining this term).</p>
+<h2 id="cancellation-is-not-just-for-async-functions"><span class="header-section-number">2.1</span> cancellation is not just for async functions<a href="#cancellation-is-not-just-for-async-functions" class="self-link"></a></h2>
+<p>In writing this paper it became clear that serendipitous-success is essential for all C++ functions. C++ already supports serendipitous-success within blocks using <code>goto</code> and the more constrained <code>break</code> and <code>continue</code> to skip over code without throwing an exception. However these do not compose in a way that allows a stack of functions to be unwound without throwing an exception. <span class="citation" data-cites="P0709R4">[<a href="#ref-P0709R4" role="doc-biblioref">P0709R4</a>]</span> <em>Zero-overhead deterministic exceptions: Throwing values</em> describes mechanisms that could possibly be extended to enable serendipitous-success for C++ functions. <span class="citation" data-cites="P1095R0">[<a href="#ref-P1095R0" role="doc-biblioref">P1095R0</a>]</span> <em>Zero overhead deterministic failure - A unified mechanism for C and C++</em> may allow serendipitous-success to be supported for C functions as well.</p>
+<h2 id="dual-of-the-strategy-pattern"><span class="header-section-number">2.2</span> Dual of the Strategy pattern<a href="#dual-of-the-strategy-pattern" class="self-link"></a></h2>
+<p>An effort is cancelled when some <strong>higher-level</strong> goal <strong>has already been satisfied</strong>, rendering the current effort unnecessary, and possibly wasteful.</p>
+<p>This pattern is dual to the strategy pattern where we use exceptions. In the strategy pattern, we abort a strategy when we discover that a <strong>low-level</strong> goal <strong>cannot be satisfied</strong>, rendering the current strategy impossible.</p>
+<p>Both patterns share the idea of early exit from an operation, and the thinking that has gone into the early exit model for exceptions also applies to cancellation. In particular:</p>
+<ul>
+<li><p>There are discrete points in the code where early exit may be initiated, i.e., throw statements or cancellation points.</p></li>
+<li><p>Early exit, whether by exception or cancellation, must unwind the stack, executing destructors.</p></li>
+<li><p>Some functions must guarantee to their callers that they will not exit early.</p></li>
+</ul>
+<p>On the other hand, some things are reversed:</p>
+<ul>
+<li><p>The reason for an exception is governed at a low level, near the throw point. The reason for cancellation is governed at a high level, near the cancellable effort.</p></li>
+<li><p>High-level code must be prepared to accept failure for a wide variety of low level reasons. Low-level code must be prepared to be cancelled for a wide variety of high-level reasons.</p></li>
+<li><p>When a sub-strategy of a larger strategy fails, we only abort the sub-strategy. When a larger effort encompassing a sub-effort is rendered unnecessary, we abort the larger effort.</p></li>
+</ul>
+<h2 id="return-value-and-exception-representations-of-serendipitous-success"><span class="header-section-number">2.3</span> return value and exception representations of serendipitous-success<a href="#return-value-and-exception-representations-of-serendipitous-success" class="self-link"></a></h2>
+<p>The ideas in this paper have proved to be exceedingly difficult to communicate. Each time this conversation is begun with a new person the same process of exploring the existing options to represent a cancelled result from a function is repeated.</p>
 <p>It is usually easy to discard using an <code>optional&lt;T&gt;</code> return value. This ease is due to the noise it introduces, so we can skip the much harder task of explaining that the return value is a poor representation of a cancelled result.</p>
 <p>We cannot avoid the hard task of explaining why something like a <code>cancelled_error</code> exception or <code>error_code</code> is a poor representation of a cancelled result, because it does not appear at first glance to introduce a lot of noise. This paper is focused on explaining why errors are a bad way to represent a cancelled result.</p>
-<blockquote>
-<p>NOTE: This paper does not depend on a particular representation of an async function. async functions may return Futures, Executors, Senders, Awaitables or something completely different. While this paper may use some of these representations in example code, they are used for exposition only.</p>
-</blockquote>
-<h1 id="background"><span class="header-section-number">3</span> Background<a href="#background" class="self-link"></a></h1>
+<h1 id="poll-proposals"><span class="header-section-number">3</span> Poll proposals<a href="#poll-proposals" class="self-link"></a></h1>
+<ul>
+<li><p>[] Does EWG wish to pursue a language representation of serendipitous-success?</p></li>
+<li><p>[] Should serendipitous-success be limited to coroutines?</p></li>
+<li><p>[] Should serendipitous-success be available to all functions?</p></li>
+<li><p>[] n-way poll for which of the language proposals should be pursued?</p></li>
+</ul>
+<h1 id="background"><span class="header-section-number">4</span> Background<a href="#background" class="self-link"></a></h1>
 <p>The <code>jthread</code> paper <span class="citation" data-cites="P0660R9">[<a href="#ref-P0660R9" role="doc-biblioref">P0660R9</a>]</span> and the <code>fiber_context</code> paper revisions <span class="citation" data-cites="P0876R5">[<a href="#ref-P0876R5" role="doc-biblioref">P0876R5</a>]</span> &amp; <span class="citation" data-cites="P0876R6">[<a href="#ref-P0876R6" role="doc-biblioref">P0876R6</a>]</span> each describe exception based mechanisms for unwinding a stack in response to a cancellation request. These mechanisms have all been removed in later paper revisions due to issues with using exceptions to unwind the stack.</p>
 <p>The <code>jthread</code> paper also defines <code>stop_source</code> and <code>stop_token</code>. A <code>stop_source</code> allows cancellation to be requested. A callback can be attached to the corresponding <code>stop_token</code> that will be called when the cancellation is requested. The <code>stop_token</code> also has methods to report the current cancellation state.</p>
 <p>The <code>stop_source</code>/<code>stop_token</code> mechanism provides a way to request an async function to stop but does not specify how the async function completes without a value or an error. This paper will explore how an async function will complete when it is stopped and why that is not an exception or an error.</p>
-<p>The <code>jthread</code> and <code>fiber_token</code> use cases involve unwinding more conventional stack frames. This same functionality is also required in other realms. <span class="citation" data-cites="P1745R0">[<a href="#ref-P1745R0" role="doc-biblioref">P1745R0</a>]</span> describes how to add support for unwinding a graph of coroutine frames without using errors. <span class="citation" data-cites="P1660R0">[<a href="#ref-P1660R0" role="doc-biblioref">P1660R0</a>]</span> describes a solution for unwinding a graph of dependent tasks.</p>
-<h1 id="motivation"><span class="header-section-number">4</span> Motivation<a href="#motivation" class="self-link"></a></h1>
+<p>The <code>jthread</code> and <code>fiber_token</code> use cases involve unwinding conventional stack frames. This same functionality is also required in other realms. <span class="citation" data-cites="P1745R0">[<a href="#ref-P1745R0" role="doc-biblioref">P1745R0</a>]</span> describes how to add support for unwinding a graph of coroutine frames without using errors. <span class="citation" data-cites="P1660R0">[<a href="#ref-P1660R0" role="doc-biblioref">P1660R0</a>]</span> describes a solution for unwinding a graph of dependent tasks.</p>
+<h1 id="motivation"><span class="header-section-number">5</span> Motivation<a href="#motivation" class="self-link"></a></h1>
 <p>Motivations for this paper include previously proposed features (eg. <a href="#stack-unwinding">stack unwinding</a>), existing practice (eg. <a href="#callbacks">Callbacks</a>), and the needs of generic code and algorithms (eg. <a href="#algorithms-that-cancel">Algorithms that cancel</a>).</p>
-<h2 id="stack-unwinding"><span class="header-section-number">4.1</span> stack unwinding<a href="#stack-unwinding" class="self-link"></a></h2>
+<h2 id="concurrency"><span class="header-section-number">5.1</span> concurrency<a href="#concurrency" class="self-link"></a></h2>
+<p>Concurrency is one of the many motivations for cancellation.</p>
+<p>When there is no concurrency, then the result of a function call can be used to skip additional work and return early.</p>
+<p>When there is concurrency, then the result of an async function must also be able to skip related concurrent work and return early.</p>
+<p>Without cancellation, the related concurrent work must either be detached (which leads to a variety of problems around resource utilization and lifetime), or the related concurrent work must be joined before the result is produced (which causes increased resource utilization and latency).</p>
+<h2 id="stack-unwinding"><span class="header-section-number">5.2</span> stack unwinding<a href="#stack-unwinding" class="self-link"></a></h2>
 <p><span class="citation" data-cites="P0660R4">[<a href="#ref-P0660R4" role="doc-biblioref">P0660R4</a>]</span> is an earlier revision of the <code>jthread</code> paper that defined a <code>std::interrupted</code> exception and a <code>std::this_thread::throw_if_interrupted()</code> API. These were intended to exit an arbitrary scope using the exception mechanism.</p>
 <p>This revision of the paper was discussed in an SG1 meeting in Seattle <a href="http://wiki.edg.com/bin/view/ExecSeattle2018/MinutesDay2">wiki</a>. After several issues were described related to TLS and reporting cancellation as an exception, the participants voted that the parts related to the <code>std::interrupted</code> exception should be removed from the paper.</p>
 <p>The <code>fiber_context</code> paper <span class="citation" data-cites="P0876R5">[<a href="#ref-P0876R5" role="doc-biblioref">P0876R5</a>]</span> defined <code>unwind_exception</code>, and after similar discussion in San Diego, <span class="citation" data-cites="P0876R6">[<a href="#ref-P0876R6" role="doc-biblioref">P0876R6</a>]</span> replaced <code>unwind_exception</code> with a ‘platform exception’ that did not run catch blocks. The ‘platform exception’ was removed after more discussion in Cologne.</p>
 <p>The issues related to reporting cancellation as a C++ exception included explicitly ignoring <code>std::interrupted</code> and transporting <code>std::interrupted</code>.</p>
-<h3 id="c-exception"><span class="header-section-number">4.1.1</span> C++ exception<a href="#c-exception" class="self-link"></a></h3>
-<h4 id="explicitly-ignoring-stdinterrupted"><span class="header-section-number">4.1.1.1</span> explicitly ignoring <code>std::interrupted</code><a href="#explicitly-ignoring-stdinterrupted" class="self-link"></a></h4>
+<h3 id="c-exception"><span class="header-section-number">5.2.1</span> C++ exception<a href="#c-exception" class="self-link"></a></h3>
+<h4 id="explicitly-ignoring-stdinterrupted"><span class="header-section-number">5.2.1.1</span> explicitly ignoring <code>std::interrupted</code><a href="#explicitly-ignoring-stdinterrupted" class="self-link"></a></h4>
 <p><span class="citation" data-cites="P0660R4">[<a href="#ref-P0660R4" role="doc-biblioref">P0660R4</a>]</span> added this to <code>std::thread</code>.</p>
 <blockquote>
 <p>An uncaught interrupted exception in the started thread of execution will silently be ignored. [Note: Thus, an uncaught exception thrown by this_thread::throw_if_interrupted() will cause the started thread to end silently. — end note]</p>
@@ -552,7 +598,7 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <li>all <code>catch(const std::interrupted&amp;)</code> must rethrow.</li>
 </ul>
 <p>It is interesting to note that the ABI boundary restriction conflicts with the catch restrictions. The ABI and the catch restrictions also led to the second issue.</p>
-<h4 id="transporting-stdinterrupted"><span class="header-section-number">4.1.1.2</span> transporting <code>std::interrupted</code><a href="#transporting-stdinterrupted" class="self-link"></a></h4>
+<h4 id="transporting-stdinterrupted"><span class="header-section-number">5.2.1.2</span> transporting <code>std::interrupted</code><a href="#transporting-stdinterrupted" class="self-link"></a></h4>
 <p><code>std::exception_ptr</code> and <code>std::current_exception()</code> were introduced to support async facilities like <code>std::thread</code>, Futures, Executors and Coroutines that must be able to transport exceptions from one thread to another and facilities that transport exceptions across ABI boundaries. While this appears to satisfy the catch restrictions by re-throwing a saved <code>std::exception_ptr</code> on a different thread, this adds even more instances of code that need to be explicitly aware of <code>std::interrupted</code>.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb1-1" title="1"><span class="dt">void</span> f<span class="op">(</span>MyCallback out<span class="op">)</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb1-2" title="2">  <span class="cf">try</span> <span class="op">{</span></a>
@@ -565,10 +611,10 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb1-9" title="9">  <span class="op">}</span></a>
 <a class="sourceLine" id="cb1-10" title="10"><span class="op">}</span></a></code></pre></div>
 <p>When <code>std::interrupted</code> is transported from thread A to thread B: - was <code>std::interrupted</code> intended to tear down thread A? How is that determined? - does thread B support <code>std::interrupted</code> (it might be an OS thread)? - does every function on the stack in thread B when the exception is re-thrown support <code>std::interrupted</code>?</p>
-<h3 id="non-cpp-exception"><span class="header-section-number">4.1.2</span> non-cpp-exception<a href="#non-cpp-exception" class="self-link"></a></h3>
+<h3 id="non-cpp-exception"><span class="header-section-number">5.2.2</span> non-cpp-exception<a href="#non-cpp-exception" class="self-link"></a></h3>
 <p>The issues of ignoring and transporting C++ exceptions for unwind has led to alternative designs that involve a non-cpp-exception.</p>
 <p>A non-cpp-exception can have different interactions with catch blocks than C++ exceptions. Three of these potential interaction choices are explored here.</p>
-<h4 id="non-cpp-exception-that-does-not-execute-catch-blocks"><span class="header-section-number">4.1.2.1</span> non-cpp-exception that does not execute catch blocks<a href="#non-cpp-exception-that-does-not-execute-catch-blocks" class="self-link"></a></h4>
+<h4 id="non-cpp-exception-that-does-not-execute-catch-blocks"><span class="header-section-number">5.2.2.1</span> non-cpp-exception that does not execute catch blocks<a href="#non-cpp-exception-that-does-not-execute-catch-blocks" class="self-link"></a></h4>
 <p>One option is to never run any catch block during unwind. This depends on destructors to do all cleanup and restore all invariants.</p>
 <p>Here is an example of code that would not be safe to have on the stack when catch blocks are not executed.</p>
 <p><strong>Example:</strong> unlock will not be called on unwind.</p>
@@ -583,7 +629,7 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb2-9" title="9">    foo<span class="op">.</span>unlock<span class="op">()</span>;</a>
 <a class="sourceLine" id="cb2-10" title="10">  <span class="op">}</span></a>
 <a class="sourceLine" id="cb2-11" title="11"><span class="op">}</span></a></code></pre></div>
-<h4 id="non-cpp-exception-that-will-execute-catch-blocks-normally"><span class="header-section-number">4.1.2.2</span> non-cpp-exception that will execute catch(…) blocks normally<a href="#non-cpp-exception-that-will-execute-catch-blocks-normally" class="self-link"></a></h4>
+<h4 id="non-cpp-exception-that-will-execute-catch-blocks-normally"><span class="header-section-number">5.2.2.2</span> non-cpp-exception that will execute catch(…) blocks normally<a href="#non-cpp-exception-that-will-execute-catch-blocks-normally" class="self-link"></a></h4>
 <p>One option is to run each <code>catch(...)</code> block during unwind. This allows <code>catch(...)</code> blocks and destructors to cleanup and restore all invariants.</p>
 <p>Here are examples of code that would not be safe to have on the stack when <code>catch(...)</code> blocks are run normally.</p>
 <p><strong>Example:</strong> The unwind will be stopped and the result of <code>std::current_exception()</code> would be used even though there is no valid value for it to return.</p>
@@ -614,7 +660,7 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb4-9" title="9">    foo<span class="op">.</span>unlock<span class="op">()</span>;</a>
 <a class="sourceLine" id="cb4-10" title="10">  <span class="op">}</span></a>
 <a class="sourceLine" id="cb4-11" title="11"><span class="op">}</span></a></code></pre></div>
-<h4 id="non-cpp-exception-that-will-execute-catch-blocks-and-force-a-rethrow-at-the-end-of-the-block"><span class="header-section-number">4.1.2.3</span> non-cpp-exception that will execute catch(…) blocks and force a rethrow at the end of the block<a href="#non-cpp-exception-that-will-execute-catch-blocks-and-force-a-rethrow-at-the-end-of-the-block" class="self-link"></a></h4>
+<h4 id="non-cpp-exception-that-will-execute-catch-blocks-and-force-a-rethrow-at-the-end-of-the-block"><span class="header-section-number">5.2.2.3</span> non-cpp-exception that will execute catch(…) blocks and force a rethrow at the end of the block<a href="#non-cpp-exception-that-will-execute-catch-blocks-and-force-a-rethrow-at-the-end-of-the-block" class="self-link"></a></h4>
 <p>One option is to run each <code>catch(...)</code> block during unwind and then unconditionally rethrow at the end of the catch block. This allows <code>catch(...)</code> blocks and destructors to cleanup and restore invariants.</p>
 <p>Here are examples of code that would not be safe to have on the stack when <code>catch(...)</code> blocks are run and then forced to rethrow.</p>
 <p><strong>Example:</strong> unlock will not be called on unwind.</p>
@@ -656,16 +702,16 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb7-9" title="9">    foo<span class="op">.</span>unlock<span class="op">()</span>;</a>
 <a class="sourceLine" id="cb7-10" title="10">  <span class="op">}</span></a>
 <a class="sourceLine" id="cb7-11" title="11"><span class="op">}</span></a></code></pre></div>
-<h2 id="algorithms-that-cancel"><span class="header-section-number">4.2</span> Algorithms that cancel<a href="#algorithms-that-cancel" class="self-link"></a></h2>
+<h2 id="algorithms-that-cancel"><span class="header-section-number">5.3</span> Algorithms that cancel<a href="#algorithms-that-cancel" class="self-link"></a></h2>
 <p>There are many algorithms for async functions. These algorithms must be able to trigger cancellation and stop cleanly when cancelled.</p>
 <p>Some examples:</p>
 <ul>
 <li>the <code>when_any()</code> (aka <code>amb()</code>) algorithm which cancels the other producers once one of them produced a value (and in this case, emits no error).</li>
 <li>the <code>when_all()</code> (aka <code>zip()</code>) algorithm which cancels the other producers when one completes with an error.</li>
-<li>the <code>take_until()</code> algorithm which cancels the source when thetrigger completes and cancels the trigger when the source completes.</li>
+<li>the <code>take_until()</code> algorithm which cancels the source when the trigger completes and cancels the trigger when the source completes.</li>
 <li>the <code>timeout()</code> algorithm which cancels the source when it does not produce a value before the timeout and then emits <code>timeout_error</code> (which is defined as part of the <code>timeout()</code> algorithm).</li>
 </ul>
-<h3 id="when_any"><span class="header-section-number">4.2.1</span> <code>when_any()</code><a href="#when_any" class="self-link"></a></h3>
+<h3 id="when_any"><span class="header-section-number">5.3.1</span> <code>when_any()</code><a href="#when_any" class="self-link"></a></h3>
 <p>One expression of the <code>when_any()</code> algorithm takes a set of async functions that have a common return type and returns the result of the first async function to complete with a value or error and cancels the rest and emits the value or error.</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb8-1" title="1"><span class="dt">void</span> foo<span class="op">()</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb8-2" title="2">  common_type_t<span class="op">&lt;</span>invoke_result_t<span class="op">&lt;</span>f<span class="op">&gt;</span>, invoke_result_t<span class="op">&lt;</span>g<span class="op">&gt;&gt;</span> v <span class="op">=</span> wait<span class="op">(</span>when_any<span class="op">(</span>f, g<span class="op">))</span>;</a>
@@ -803,16 +849,25 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb14-15" title="15"><span class="op">}</span>;</a></code></pre></div></td>
 </tr>
 <tr class="even">
-<td><div class="sourceCode" id="cb15"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb15-1" title="1"><span class="kw">struct</span> fn <span class="op">{</span></a>
-<a class="sourceLine" id="cb15-2" title="2">  <span class="kw">auto</span> <span class="kw">operator</span><span class="op">()(</span></a>
-<a class="sourceLine" id="cb15-3" title="3">    Sender <span class="kw">auto</span> s0, Sender <span class="kw">auto</span> s1<span class="op">)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb15-4" title="4">    <span class="cf">return</span> when_any_sender<span class="op">&lt;</span></a>
-<a class="sourceLine" id="cb15-5" title="5">      <span class="kw">decltype</span><span class="op">(</span>s0<span class="op">)</span>, <span class="kw">decltype</span><span class="op">(</span>s1<span class="op">)&gt;{</span>s0, s1<span class="op">}</span>;</a>
-<a class="sourceLine" id="cb15-6" title="6">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb15-7" title="7"><span class="op">}</span>;</a>
-<a class="sourceLine" id="cb15-8" title="8"></a>
-<a class="sourceLine" id="cb15-9" title="9"><span class="op">}</span></a>
-<a class="sourceLine" id="cb15-10" title="10"><span class="kw">constexpr</span> <span class="kw">inline</span> when_any_alg<span class="op">::</span>fn when_any<span class="op">{}</span>;</a></code></pre></div></td>
+<td><div class="sourceCode" id="cb15"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb15-1" title="1"><span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb15-2" title="2"><span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb15-3" title="3"><span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb15-4" title="4"><span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb15-5" title="5"><span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb15-6" title="6"><span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb15-7" title="7"><span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb15-8" title="8"><span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb15-9" title="9"></a>
+<a class="sourceLine" id="cb15-10" title="10"><span class="kw">struct</span> fn <span class="op">{</span></a>
+<a class="sourceLine" id="cb15-11" title="11">  <span class="kw">auto</span> <span class="kw">operator</span><span class="op">()(</span></a>
+<a class="sourceLine" id="cb15-12" title="12">    Sender <span class="kw">auto</span> s0, Sender <span class="kw">auto</span> s1<span class="op">)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb15-13" title="13">    <span class="cf">return</span> when_any_sender<span class="op">&lt;</span></a>
+<a class="sourceLine" id="cb15-14" title="14">      <span class="kw">decltype</span><span class="op">(</span>s0<span class="op">)</span>, <span class="kw">decltype</span><span class="op">(</span>s1<span class="op">)&gt;{</span>s0, s1<span class="op">}</span>;</a>
+<a class="sourceLine" id="cb15-15" title="15">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb15-16" title="16"><span class="op">}</span>;</a>
+<a class="sourceLine" id="cb15-17" title="17"></a>
+<a class="sourceLine" id="cb15-18" title="18"><span class="op">}</span></a>
+<a class="sourceLine" id="cb15-19" title="19"><span class="kw">constexpr</span> <span class="kw">inline</span> when_any_alg<span class="op">::</span>fn when_any<span class="op">{}</span>;</a></code></pre></div></td>
 <td><div class="sourceCode" id="cb16"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb16-1" title="1"><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> S1<span class="op">&gt;</span></a>
 <a class="sourceLine" id="cb16-2" title="2"><span class="kw">struct</span> pipe_fn <span class="op">{</span></a>
 <a class="sourceLine" id="cb16-3" title="3">  S1 s1_;</a>
@@ -824,12 +879,14 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb16-9" title="9"></a>
 <a class="sourceLine" id="cb16-10" title="10"><span class="kw">struct</span> fn <span class="op">{</span></a>
 <a class="sourceLine" id="cb16-11" title="11">  <span class="kw">auto</span> <span class="kw">operator</span><span class="op">()(</span>Sender <span class="kw">auto</span> s1<span class="op">)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb16-12" title="12">    <span class="cf">return</span> pipe_fn<span class="op">&lt;</span><span class="kw">decltype</span><span class="op">(</span>s1<span class="op">)&gt;{</span>s1<span class="op">}</span>;</a>
-<a class="sourceLine" id="cb16-13" title="13">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb16-14" title="14"><span class="op">}</span>;</a>
-<a class="sourceLine" id="cb16-15" title="15"></a>
-<a class="sourceLine" id="cb16-16" title="16"><span class="op">}</span></a>
-<a class="sourceLine" id="cb16-17" title="17"><span class="kw">constexpr</span> <span class="kw">inline</span> when_any_alg<span class="op">::</span>fn when_any<span class="op">{}</span>;</a></code></pre></div></td>
+<a class="sourceLine" id="cb16-12" title="12">    <span class="co">//  &lt;---</span></a>
+<a class="sourceLine" id="cb16-13" title="13">    <span class="cf">return</span> pipe_fn<span class="op">&lt;</span><span class="kw">decltype</span><span class="op">(</span>s1<span class="op">)&gt;{</span>s1<span class="op">}</span>;</a>
+<a class="sourceLine" id="cb16-14" title="14">    <span class="co">//  &lt;---</span></a>
+<a class="sourceLine" id="cb16-15" title="15">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb16-16" title="16"><span class="op">}</span>;</a>
+<a class="sourceLine" id="cb16-17" title="17"></a>
+<a class="sourceLine" id="cb16-18" title="18"><span class="op">}</span></a>
+<a class="sourceLine" id="cb16-19" title="19"><span class="kw">constexpr</span> <span class="kw">inline</span> when_any_alg<span class="op">::</span>fn when_any<span class="op">{}</span>;</a></code></pre></div></td>
 </tr>
 </tbody>
 </table>
@@ -850,11 +907,11 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <tr class="odd">
 <td><div class="sourceCode" id="cb17"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb17-1" title="1"><span class="kw">namespace</span> when_any_alg <span class="op">{</span></a>
 <a class="sourceLine" id="cb17-2" title="2"></a>
-<a class="sourceLine" id="cb17-3" title="3"></a>
-<a class="sourceLine" id="cb17-4" title="4"></a>
+<a class="sourceLine" id="cb17-3" title="3"><span class="co">// ---&gt;</span></a>
+<a class="sourceLine" id="cb17-4" title="4"><span class="co">// ---&gt;</span></a>
 <a class="sourceLine" id="cb17-5" title="5"><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> C<span class="op">&gt;</span></a>
 <a class="sourceLine" id="cb17-6" title="6"><span class="kw">struct</span> result <span class="op">{</span></a>
-<a class="sourceLine" id="cb17-7" title="7"></a>
+<a class="sourceLine" id="cb17-7" title="7">  <span class="co">// ---&gt;</span></a>
 <a class="sourceLine" id="cb17-8" title="8">  C c_;</a>
 <a class="sourceLine" id="cb17-9" title="9">  atomic<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> remain_ <span class="op">=</span> <span class="dv">2</span>;</a>
 <a class="sourceLine" id="cb17-10" title="10">  function<span class="op">&lt;</span><span class="dt">void</span><span class="op">(</span>C<span class="op">)&gt;</span> r_;</a>
@@ -903,12 +960,12 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb19-9" title="9">    r_<span class="op">-&gt;</span>defer<span class="op">()</span>;</a>
 <a class="sourceLine" id="cb19-10" title="10">  <span class="op">}</span></a>
 <a class="sourceLine" id="cb19-11" title="11">  <span class="dt">void</span> error<span class="op">(</span><span class="kw">auto</span> e<span class="op">)</span> <span class="kw">noexcept</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb19-12" title="12"></a>
+<a class="sourceLine" id="cb19-12" title="12">    <span class="co">// ---&gt;</span></a>
 <a class="sourceLine" id="cb19-13" title="13">    <span class="cf">if</span> <span class="op">(</span>stop_<span class="op">.</span>request_stop<span class="op">())</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb19-14" title="14">      r_<span class="op">-&gt;</span>r_ <span class="op">=</span> <span class="op">[</span>e<span class="op">]</span> </a>
 <a class="sourceLine" id="cb19-15" title="15">        <span class="op">(</span><span class="kw">auto</span> c<span class="op">)</span> <span class="op">{</span>c<span class="op">.</span>error<span class="op">(</span>e<span class="op">)</span>;<span class="op">}</span>;</a>
 <a class="sourceLine" id="cb19-16" title="16">    <span class="op">}</span></a>
-<a class="sourceLine" id="cb19-17" title="17"></a>
+<a class="sourceLine" id="cb19-17" title="17">    <span class="co">// ---&gt;</span></a>
 <a class="sourceLine" id="cb19-18" title="18">    r_<span class="op">-&gt;</span>defer<span class="op">()</span>;</a>
 <a class="sourceLine" id="cb19-19" title="19">  <span class="op">}</span></a>
 <a class="sourceLine" id="cb19-20" title="20">  <span class="dt">void</span> done<span class="op">()</span> <span class="kw">noexcept</span> <span class="op">{</span></a>
@@ -934,15 +991,15 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb20-17" title="17">    <span class="op">}</span></a>
 <a class="sourceLine" id="cb20-18" title="18">    r_<span class="op">-&gt;</span>defer<span class="op">()</span>;</a>
 <a class="sourceLine" id="cb20-19" title="19">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb20-20" title="20"></a>
-<a class="sourceLine" id="cb20-21" title="21"></a>
-<a class="sourceLine" id="cb20-22" title="22"></a>
+<a class="sourceLine" id="cb20-20" title="20">  <span class="co">// &lt;---</span></a>
+<a class="sourceLine" id="cb20-21" title="21">  <span class="co">// &lt;---</span></a>
+<a class="sourceLine" id="cb20-22" title="22">  <span class="co">// &lt;---</span></a>
 <a class="sourceLine" id="cb20-23" title="23"><span class="op">}</span>;</a></code></pre></div></td>
 </tr>
 <tr class="odd">
 <td><div class="sourceCode" id="cb21"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb21-1" title="1"><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> S0, <span class="kw">class</span> S1<span class="op">&gt;</span></a>
 <a class="sourceLine" id="cb21-2" title="2"><span class="kw">struct</span> when_any_sender <span class="op">{</span></a>
-<a class="sourceLine" id="cb21-3" title="3"></a>
+<a class="sourceLine" id="cb21-3" title="3">  <span class="co">//   ---&gt;</span></a>
 <a class="sourceLine" id="cb21-4" title="4">  S0 s0_;</a>
 <a class="sourceLine" id="cb21-5" title="5">  S1 s1_;</a>
 <a class="sourceLine" id="cb21-6" title="6">  <span class="dt">void</span> submit<span class="op">(</span>Callback <span class="kw">auto</span> c<span class="op">)</span> <span class="op">{</span></a>
@@ -976,7 +1033,7 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <tr class="even">
 <td><div class="sourceCode" id="cb23"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb23-1" title="1"><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> S1<span class="op">&gt;</span></a>
 <a class="sourceLine" id="cb23-2" title="2"><span class="kw">struct</span> pipe_fn <span class="op">{</span></a>
-<a class="sourceLine" id="cb23-3" title="3"></a>
+<a class="sourceLine" id="cb23-3" title="3">  <span class="co">//   ---&gt;</span></a>
 <a class="sourceLine" id="cb23-4" title="4">  S1 s1_;</a>
 <a class="sourceLine" id="cb23-5" title="5">  <span class="kw">auto</span> <span class="kw">operator</span><span class="op">()(</span>Sender <span class="kw">auto</span> s0<span class="op">)</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb23-6" title="6">    <span class="cf">return</span> when_any_sender<span class="op">&lt;</span></a>
@@ -985,7 +1042,7 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb23-9" title="9"><span class="op">}</span>;</a>
 <a class="sourceLine" id="cb23-10" title="10"></a>
 <a class="sourceLine" id="cb23-11" title="11"><span class="kw">struct</span> fn <span class="op">{</span></a>
-<a class="sourceLine" id="cb23-12" title="12"></a>
+<a class="sourceLine" id="cb23-12" title="12">  <span class="co">//   ---&gt;</span></a>
 <a class="sourceLine" id="cb23-13" title="13">  <span class="kw">auto</span> <span class="kw">operator</span><span class="op">()(</span>Sender <span class="kw">auto</span> s1<span class="op">)</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb23-14" title="14">    <span class="cf">return</span> pipe_fn<span class="op">&lt;</span><span class="kw">decltype</span><span class="op">(</span>s1<span class="op">)&gt;{</span>s1<span class="op">}</span>;</a>
 <a class="sourceLine" id="cb23-15" title="15">  <span class="op">}</span></a>
@@ -1055,7 +1112,7 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb26-6" title="6"><span class="op">}</span></a></code></pre></div></td>
 <td><div class="sourceCode" id="cb27"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb27-1" title="1"><span class="kw">auto</span> foo<span class="op">()</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb27-2" title="2">  <span class="cf">return</span> get_data<span class="op">(</span>server0<span class="op">)</span> <span class="op">|</span></a>
-<a class="sourceLine" id="cb27-3" title="3"></a>
+<a class="sourceLine" id="cb27-3" title="3">    <span class="co">//  &lt;---</span></a>
 <a class="sourceLine" id="cb27-4" title="4">    when_any<span class="op">(</span>should_fail<span class="op">{}</span>, </a>
 <a class="sourceLine" id="cb27-5" title="5">      get_data<span class="op">(</span>server1<span class="op">))</span>;</a>
 <a class="sourceLine" id="cb27-6" title="6"><span class="op">}</span></a></code></pre></div></td>
@@ -1065,9 +1122,9 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <p>Observe that the <code>should_fail</code> predicate is unable to distinguish which source it is filtering when it is mixed into <code>when_any</code>. Separating the filter concern into <code>filter_error()</code> provides each source with a different filter.</p>
 <p>Notice also, that introducing the <code>when_any_stopped</code> error type indicates that other algorithms will need to include that type in their predicates when they wish to filter it out.</p>
 <p>When cancellation is not an error, algorithms that cancel are not concerned with errors and can pass through the value and error calls unchanged. The separation of concerns provided by the <code>when_any()</code> and <code>filter_error()</code> algorithms depend on cancellation not being an error.</p>
-<h2 id="algorithms-that-respond-to-errors"><span class="header-section-number">4.3</span> Algorithms that respond to errors<a href="#algorithms-that-respond-to-errors" class="self-link"></a></h2>
+<h2 id="algorithms-that-respond-to-errors"><span class="header-section-number">5.4</span> Algorithms that respond to errors<a href="#algorithms-that-respond-to-errors" class="self-link"></a></h2>
 <p>One way to explore cancellation as separate from error is to show how treating cancellation as an error affects algorithms that respond to errors.</p>
-<h3 id="a-generic-retry-algorithm"><span class="header-section-number">4.3.1</span> a generic <code>retry()</code> algorithm<a href="#a-generic-retry-algorithm" class="self-link"></a></h3>
+<h3 id="a-generic-retry-algorithm"><span class="header-section-number">5.4.1</span> a generic <code>retry()</code> algorithm<a href="#a-generic-retry-algorithm" class="self-link"></a></h3>
 <p><code>retry()</code> responds to errors by submitting the work again and again until it completes with success or is cancelled.</p>
 <blockquote>
 <p>NOTE: For the purpose of comparison this paper will use the Callback naming specified in <span class="citation" data-cites="P1660R0">[<a href="#ref-P1660R0" role="doc-biblioref">P1660R0</a>]</span> as an example of <a href="#multiple-function-style">multiple function style</a>. The names chosen for a particular expression of the <a href="#multiple-function-style">multiple function style</a> do not affect this proposal.</p>
@@ -1113,14 +1170,20 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb28-24" title="24">  <span class="op">}</span></a>
 <a class="sourceLine" id="cb28-25" title="25"><span class="op">}</span>;</a>
 <a class="sourceLine" id="cb28-26" title="26"></a>
-<a class="sourceLine" id="cb28-27" title="27"><span class="kw">struct</span> fn <span class="op">{</span></a>
-<a class="sourceLine" id="cb28-28" title="28">  <span class="kw">auto</span> <span class="kw">operator</span><span class="op">()(</span>Sender <span class="kw">auto</span> s<span class="op">)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb28-29" title="29">    <span class="cf">return</span> retry_sender<span class="op">&lt;</span><span class="kw">decltype</span><span class="op">(</span>s<span class="op">)&gt;{</span>s<span class="op">}</span>;</a>
-<a class="sourceLine" id="cb28-30" title="30">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb28-31" title="31"><span class="op">}</span>;</a>
+<a class="sourceLine" id="cb28-27" title="27"><span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb28-28" title="28"><span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb28-29" title="29"><span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb28-30" title="30"><span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb28-31" title="31"><span class="co">//  ---&gt;</span></a>
 <a class="sourceLine" id="cb28-32" title="32"></a>
-<a class="sourceLine" id="cb28-33" title="33"><span class="op">}</span></a>
-<a class="sourceLine" id="cb28-34" title="34"><span class="kw">constexpr</span> <span class="kw">inline</span> retry_alg<span class="op">::</span>fn retry<span class="op">{}</span>;</a></code></pre></div></td>
+<a class="sourceLine" id="cb28-33" title="33"><span class="kw">struct</span> fn <span class="op">{</span></a>
+<a class="sourceLine" id="cb28-34" title="34">  <span class="kw">auto</span> <span class="kw">operator</span><span class="op">()(</span>Sender <span class="kw">auto</span> s<span class="op">)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb28-35" title="35">    <span class="cf">return</span> retry_sender<span class="op">&lt;</span><span class="kw">decltype</span><span class="op">(</span>s<span class="op">)&gt;{</span>s<span class="op">}</span>;</a>
+<a class="sourceLine" id="cb28-36" title="36">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb28-37" title="37"><span class="op">}</span>;</a>
+<a class="sourceLine" id="cb28-38" title="38"></a>
+<a class="sourceLine" id="cb28-39" title="39"><span class="op">}</span></a>
+<a class="sourceLine" id="cb28-40" title="40"><span class="kw">constexpr</span> <span class="kw">inline</span> retry_alg<span class="op">::</span>fn retry<span class="op">{}</span>;</a></code></pre></div></td>
 <td><div class="sourceCode" id="cb29"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb29-1" title="1"><span class="kw">namespace</span> retry_alg <span class="op">{</span></a>
 <a class="sourceLine" id="cb29-2" title="2"></a>
 <a class="sourceLine" id="cb29-3" title="3"><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> S, <span class="kw">class</span> C<span class="op">&gt;</span></a>
@@ -1183,42 +1246,53 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb30-2" title="2"></a>
 <a class="sourceLine" id="cb30-3" title="3"><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> S, <span class="kw">class</span> C<span class="op">&gt;</span></a>
 <a class="sourceLine" id="cb30-4" title="4"><span class="kw">struct</span> retry_callback <span class="op">{</span></a>
-<a class="sourceLine" id="cb30-5" title="5">  S s_;</a>
-<a class="sourceLine" id="cb30-6" title="6">  C c_;</a>
-<a class="sourceLine" id="cb30-7" title="7">  <span class="dt">void</span> <span class="kw">operator</span><span class="op">()(</span><span class="kw">auto</span><span class="op">...</span> vn<span class="op">)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb30-8" title="8">    c_<span class="op">(</span>vn<span class="op">...)</span>;</a>
-<a class="sourceLine" id="cb30-9" title="9">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb30-10" title="10">  <span class="dt">void</span> error<span class="op">(</span><span class="kw">auto</span><span class="op">)</span> <span class="kw">noexcept</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb30-11" title="11">    s_<span class="op">.</span>submit<span class="op">(*</span><span class="kw">this</span><span class="op">)</span>;</a>
-<a class="sourceLine" id="cb30-12" title="12">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb30-13" title="13">  <span class="dt">void</span> done<span class="op">()</span> <span class="kw">noexcept</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb30-14" title="14">    c_<span class="op">.</span>done<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb30-15" title="15">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb30-16" title="16"><span class="op">}</span>;</a>
-<a class="sourceLine" id="cb30-17" title="17"></a>
-<a class="sourceLine" id="cb30-18" title="18"><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> S<span class="op">&gt;</span></a>
-<a class="sourceLine" id="cb30-19" title="19"><span class="kw">struct</span> retry_sender <span class="op">{</span></a>
-<a class="sourceLine" id="cb30-20" title="20">  S s_;</a>
-<a class="sourceLine" id="cb30-21" title="21">  <span class="dt">void</span> submit<span class="op">(</span>Callback <span class="kw">auto</span> c<span class="op">)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb30-22" title="22">    s_<span class="op">.</span>submit<span class="op">(</span></a>
-<a class="sourceLine" id="cb30-23" title="23">      retry_callback<span class="op">&lt;</span>S, <span class="kw">decltype</span><span class="op">(</span>c<span class="op">)&gt;{</span>s_, c<span class="op">})</span>;</a>
-<a class="sourceLine" id="cb30-24" title="24">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb30-25" title="25"><span class="op">}</span>;</a>
-<a class="sourceLine" id="cb30-26" title="26"></a>
-<a class="sourceLine" id="cb30-27" title="27"><span class="kw">struct</span> pipe_fn <span class="op">{</span></a>
-<a class="sourceLine" id="cb30-28" title="28">  <span class="kw">auto</span> <span class="kw">operator</span><span class="op">()(</span>Sender <span class="kw">auto</span> s<span class="op">)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb30-29" title="29">    <span class="cf">return</span> retry_sender<span class="op">&lt;</span><span class="kw">decltype</span><span class="op">(</span>s<span class="op">)&gt;{</span>s<span class="op">}</span>;</a>
-<a class="sourceLine" id="cb30-30" title="30">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb30-31" title="31"><span class="op">}</span>;</a>
-<a class="sourceLine" id="cb30-32" title="32"></a>
-<a class="sourceLine" id="cb30-33" title="33"><span class="kw">struct</span> fn <span class="op">{</span></a>
-<a class="sourceLine" id="cb30-34" title="34">  <span class="kw">auto</span> <span class="kw">operator</span><span class="op">()()</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb30-35" title="35">    <span class="cf">return</span> pipe_fn<span class="op">{}</span>;</a>
-<a class="sourceLine" id="cb30-36" title="36">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb30-37" title="37"><span class="op">}</span>;</a>
-<a class="sourceLine" id="cb30-38" title="38"></a>
-<a class="sourceLine" id="cb30-39" title="39"><span class="op">}</span></a>
-<a class="sourceLine" id="cb30-40" title="40"><span class="kw">constexpr</span> <span class="kw">inline</span> retry_alg<span class="op">::</span>fn retry<span class="op">{}</span>;</a></code></pre></div></td>
+<a class="sourceLine" id="cb30-5" title="5">  <span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb30-6" title="6">  S s_;</a>
+<a class="sourceLine" id="cb30-7" title="7">  C c_;</a>
+<a class="sourceLine" id="cb30-8" title="8">  <span class="dt">void</span> <span class="kw">operator</span><span class="op">()(</span><span class="kw">auto</span><span class="op">...</span> vn<span class="op">)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb30-9" title="9">    c_<span class="op">(</span>vn<span class="op">...)</span>;</a>
+<a class="sourceLine" id="cb30-10" title="10">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb30-11" title="11">  <span class="dt">void</span> error<span class="op">(</span><span class="kw">auto</span><span class="op">)</span> <span class="kw">noexcept</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb30-12" title="12">    <span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb30-13" title="13">    s_<span class="op">.</span>submit<span class="op">(*</span><span class="kw">this</span><span class="op">)</span>;</a>
+<a class="sourceLine" id="cb30-14" title="14">    <span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb30-15" title="15">    <span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb30-16" title="16">    <span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb30-17" title="17">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb30-18" title="18">  <span class="dt">void</span> done<span class="op">()</span> <span class="kw">noexcept</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb30-19" title="19">    c_<span class="op">.</span>done<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb30-20" title="20">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb30-21" title="21"><span class="op">}</span>;</a>
+<a class="sourceLine" id="cb30-22" title="22"></a>
+<a class="sourceLine" id="cb30-23" title="23"><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> S<span class="op">&gt;</span></a>
+<a class="sourceLine" id="cb30-24" title="24"><span class="kw">struct</span> retry_sender <span class="op">{</span></a>
+<a class="sourceLine" id="cb30-25" title="25">  <span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb30-26" title="26">  S s_;</a>
+<a class="sourceLine" id="cb30-27" title="27">  <span class="dt">void</span> submit<span class="op">(</span>Callback <span class="kw">auto</span> c<span class="op">)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb30-28" title="28">    s_<span class="op">.</span>submit<span class="op">(</span></a>
+<a class="sourceLine" id="cb30-29" title="29">      retry_callback<span class="op">&lt;</span>S, <span class="kw">decltype</span><span class="op">(</span>c<span class="op">)&gt;{</span>s_, c<span class="op">})</span>;</a>
+<a class="sourceLine" id="cb30-30" title="30">      <span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb30-31" title="31">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb30-32" title="32"><span class="op">}</span>;</a>
+<a class="sourceLine" id="cb30-33" title="33"></a>
+<a class="sourceLine" id="cb30-34" title="34"><span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb30-35" title="35"><span class="kw">struct</span> pipe_fn <span class="op">{</span></a>
+<a class="sourceLine" id="cb30-36" title="36">  <span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb30-37" title="37">  <span class="kw">auto</span> <span class="kw">operator</span><span class="op">()(</span>Sender <span class="kw">auto</span> s<span class="op">)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb30-38" title="38">    <span class="cf">return</span> retry_sender<span class="op">&lt;</span><span class="kw">decltype</span><span class="op">(</span>s<span class="op">)&gt;{</span>s<span class="op">}</span>;</a>
+<a class="sourceLine" id="cb30-39" title="39">    <span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb30-40" title="40">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb30-41" title="41"><span class="op">}</span>;</a>
+<a class="sourceLine" id="cb30-42" title="42"></a>
+<a class="sourceLine" id="cb30-43" title="43"><span class="kw">struct</span> fn <span class="op">{</span></a>
+<a class="sourceLine" id="cb30-44" title="44">  <span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb30-45" title="45">  <span class="kw">auto</span> <span class="kw">operator</span><span class="op">()()</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb30-46" title="46">    <span class="cf">return</span> pipe_fn<span class="op">{}</span>;</a>
+<a class="sourceLine" id="cb30-47" title="47">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb30-48" title="48"><span class="op">}</span>;</a>
+<a class="sourceLine" id="cb30-49" title="49"></a>
+<a class="sourceLine" id="cb30-50" title="50"><span class="op">}</span></a>
+<a class="sourceLine" id="cb30-51" title="51"><span class="kw">constexpr</span> <span class="kw">inline</span> retry_alg<span class="op">::</span>fn retry<span class="op">{}</span>;</a></code></pre></div></td>
 <td><div class="sourceCode" id="cb31"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb31-1" title="1"><span class="kw">namespace</span> retry_alg <span class="op">{</span></a>
 <a class="sourceLine" id="cb31-2" title="2"></a>
 <a class="sourceLine" id="cb31-3" title="3"><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> P, <span class="kw">class</span> S, <span class="kw">class</span> C<span class="op">&gt;</span></a>
@@ -1236,37 +1310,40 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb31-15" title="15">      c_<span class="op">.</span>error<span class="op">(</span>e<span class="op">)</span>;</a>
 <a class="sourceLine" id="cb31-16" title="16">    <span class="op">}</span></a>
 <a class="sourceLine" id="cb31-17" title="17">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb31-18" title="18"><span class="op">}</span>;</a>
-<a class="sourceLine" id="cb31-19" title="19"></a>
-<a class="sourceLine" id="cb31-20" title="20"><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> P, <span class="kw">class</span> S<span class="op">&gt;</span></a>
-<a class="sourceLine" id="cb31-21" title="21"><span class="kw">struct</span> retry_sender <span class="op">{</span></a>
-<a class="sourceLine" id="cb31-22" title="22">  P p_;</a>
-<a class="sourceLine" id="cb31-23" title="23">  S s_;</a>
-<a class="sourceLine" id="cb31-24" title="24">  <span class="dt">void</span> submit<span class="op">(</span>Callback <span class="kw">auto</span> c<span class="op">)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb31-25" title="25">    s_<span class="op">.</span>submit<span class="op">(</span></a>
-<a class="sourceLine" id="cb31-26" title="26">      retry_callback<span class="op">&lt;</span>P, S, <span class="kw">decltype</span><span class="op">(</span>c<span class="op">)&gt;{</span></a>
-<a class="sourceLine" id="cb31-27" title="27">        p_, s_, c<span class="op">})</span>;</a>
-<a class="sourceLine" id="cb31-28" title="28">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb31-29" title="29"><span class="op">}</span>;</a>
-<a class="sourceLine" id="cb31-30" title="30"></a>
-<a class="sourceLine" id="cb31-31" title="31"><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> P<span class="op">&gt;</span></a>
-<a class="sourceLine" id="cb31-32" title="32"><span class="kw">struct</span> pipe_fn <span class="op">{</span></a>
-<a class="sourceLine" id="cb31-33" title="33">  P p_;</a>
-<a class="sourceLine" id="cb31-34" title="34">  <span class="kw">auto</span> <span class="kw">operator</span><span class="op">()(</span>Sender <span class="kw">auto</span> s<span class="op">)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb31-35" title="35">    <span class="cf">return</span> retry_sender<span class="op">&lt;</span>P, <span class="kw">decltype</span><span class="op">(</span>s<span class="op">)&gt;{</span></a>
-<a class="sourceLine" id="cb31-36" title="36">      p_, s<span class="op">}</span>;</a>
-<a class="sourceLine" id="cb31-37" title="37">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb31-38" title="38"><span class="op">}</span>;</a>
-<a class="sourceLine" id="cb31-39" title="39"></a>
-<a class="sourceLine" id="cb31-40" title="40"><span class="kw">struct</span> fn <span class="op">{</span></a>
-<a class="sourceLine" id="cb31-41" title="41">  <span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> P<span class="op">&gt;</span></a>
-<a class="sourceLine" id="cb31-42" title="42">  <span class="kw">auto</span> <span class="kw">operator</span><span class="op">()(</span>P p<span class="op">)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb31-43" title="43">    <span class="cf">return</span> pipe_fn<span class="op">&lt;</span>P<span class="op">&gt;{</span>p<span class="op">}</span>;</a>
-<a class="sourceLine" id="cb31-44" title="44">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb31-45" title="45"><span class="op">}</span>;</a>
-<a class="sourceLine" id="cb31-46" title="46"></a>
-<a class="sourceLine" id="cb31-47" title="47"><span class="op">}</span></a>
-<a class="sourceLine" id="cb31-48" title="48"><span class="kw">constexpr</span> <span class="kw">inline</span> retry_alg<span class="op">::</span>fn retry<span class="op">{}</span>;</a></code></pre></div></td>
+<a class="sourceLine" id="cb31-18" title="18">  <span class="co">//  &lt;---</span></a>
+<a class="sourceLine" id="cb31-19" title="19">  <span class="co">//  &lt;---</span></a>
+<a class="sourceLine" id="cb31-20" title="20">  <span class="co">//  &lt;---</span></a>
+<a class="sourceLine" id="cb31-21" title="21"><span class="op">}</span>;</a>
+<a class="sourceLine" id="cb31-22" title="22"></a>
+<a class="sourceLine" id="cb31-23" title="23"><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> P, <span class="kw">class</span> S<span class="op">&gt;</span></a>
+<a class="sourceLine" id="cb31-24" title="24"><span class="kw">struct</span> retry_sender <span class="op">{</span></a>
+<a class="sourceLine" id="cb31-25" title="25">  P p_;</a>
+<a class="sourceLine" id="cb31-26" title="26">  S s_;</a>
+<a class="sourceLine" id="cb31-27" title="27">  <span class="dt">void</span> submit<span class="op">(</span>Callback <span class="kw">auto</span> c<span class="op">)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb31-28" title="28">    s_<span class="op">.</span>submit<span class="op">(</span></a>
+<a class="sourceLine" id="cb31-29" title="29">      retry_callback<span class="op">&lt;</span>P, S, <span class="kw">decltype</span><span class="op">(</span>c<span class="op">)&gt;{</span></a>
+<a class="sourceLine" id="cb31-30" title="30">        p_, s_, c<span class="op">})</span>;</a>
+<a class="sourceLine" id="cb31-31" title="31">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb31-32" title="32"><span class="op">}</span>;</a>
+<a class="sourceLine" id="cb31-33" title="33"></a>
+<a class="sourceLine" id="cb31-34" title="34"><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> P<span class="op">&gt;</span></a>
+<a class="sourceLine" id="cb31-35" title="35"><span class="kw">struct</span> pipe_fn <span class="op">{</span></a>
+<a class="sourceLine" id="cb31-36" title="36">  P p_;</a>
+<a class="sourceLine" id="cb31-37" title="37">  <span class="kw">auto</span> <span class="kw">operator</span><span class="op">()(</span>Sender <span class="kw">auto</span> s<span class="op">)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb31-38" title="38">    <span class="cf">return</span> retry_sender<span class="op">&lt;</span>P, <span class="kw">decltype</span><span class="op">(</span>s<span class="op">)&gt;{</span></a>
+<a class="sourceLine" id="cb31-39" title="39">      p_, s<span class="op">}</span>;</a>
+<a class="sourceLine" id="cb31-40" title="40">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb31-41" title="41"><span class="op">}</span>;</a>
+<a class="sourceLine" id="cb31-42" title="42"></a>
+<a class="sourceLine" id="cb31-43" title="43"><span class="kw">struct</span> fn <span class="op">{</span></a>
+<a class="sourceLine" id="cb31-44" title="44">  <span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> P<span class="op">&gt;</span></a>
+<a class="sourceLine" id="cb31-45" title="45">  <span class="kw">auto</span> <span class="kw">operator</span><span class="op">()(</span>P p<span class="op">)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb31-46" title="46">    <span class="cf">return</span> pipe_fn<span class="op">&lt;</span>P<span class="op">&gt;{</span>p<span class="op">}</span>;</a>
+<a class="sourceLine" id="cb31-47" title="47">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb31-48" title="48"><span class="op">}</span>;</a>
+<a class="sourceLine" id="cb31-49" title="49"></a>
+<a class="sourceLine" id="cb31-50" title="50"><span class="op">}</span></a>
+<a class="sourceLine" id="cb31-51" title="51"><span class="kw">constexpr</span> <span class="kw">inline</span> retry_alg<span class="op">::</span>fn retry<span class="op">{}</span>;</a></code></pre></div></td>
 </tr>
 </tbody>
 </table>
@@ -1309,30 +1386,30 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb33-5" title="5"><span class="op">}</span></a></code></pre></div></td>
 <td><div class="sourceCode" id="cb34"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb34-1" title="1"><span class="kw">auto</span> foo<span class="op">()</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb34-2" title="2">  <span class="cf">return</span> get_data<span class="op">()</span> <span class="op">|</span> </a>
-<a class="sourceLine" id="cb34-3" title="3"></a>
+<a class="sourceLine" id="cb34-3" title="3">    <span class="co">// &lt;---</span></a>
 <a class="sourceLine" id="cb34-4" title="4">    retry<span class="op">(</span>should_retry<span class="op">{})</span>;</a>
 <a class="sourceLine" id="cb34-5" title="5"><span class="op">}</span></a></code></pre></div></td>
 </tr>
 </tbody>
 </table>
 <p>When cancellation is not an error, algorithms that respond to errors are only concerned with errors and can pass through the value and done calls unchanged. The separation of concerns provided by the <code>retry()</code> and <code>filter_error()</code> algorithms depend on cancellation not being an error.</p>
-<h2 id="callbacks"><span class="header-section-number">4.4</span> Callbacks<a href="#callbacks" class="self-link"></a></h2>
-<p>As the most common pattern for expressing async, callbacks also need to be called with serendipitous-success. There is a lot to be said about callbacks and (<span class="citation" data-cites="P1678R0">[<a href="#ref-P1678R0" role="doc-biblioref">P1678R0</a>]</span>, <a href="https://wg21.link/p1678">latest</a>) is focused on callbacks. The following will cover only some of that larger topic.</p>
+<h2 id="callbacks"><span class="header-section-number">5.5</span> Callbacks<a href="#callbacks" class="self-link"></a></h2>
+<p>As the most common pattern for expressing async, callbacks also need to be called with serendipitous-success. There is a lot to be said about callbacks and (<span class="citation" data-cites="P1678R1">[<a href="#ref-P1678R1" role="doc-biblioref">P1678R1</a>]</span>, <a href="https://wg21.link/p1678">latest</a>) is focused on callbacks. The following will cover only some of that larger topic.</p>
 <p>Examples of callbacks can be found in the networking TS <span class="citation" data-cites="N4771">[<a href="#ref-N4771" role="doc-biblioref">N4771</a>]</span>. The completion signature for <code>async_accept()</code> is <code>void(error_code ec, socket_type s)</code>. This signature clearly displays that the first argument is used for the error channel and that the second argument is used for the value channel. Perhaps, if the completion is an object, the destructor of that object might be a signal that there was a serendipitous-success.</p>
-<h3 id="destructor-style"><span class="header-section-number">4.4.1</span> destructor style<a href="#destructor-style" class="self-link"></a></h3>
+<h3 id="destructor-style"><span class="header-section-number">5.5.1</span> destructor style<a href="#destructor-style" class="self-link"></a></h3>
 <p>There are reasons not to use the destructor to signal that there was serendipitous-success.</p>
 <p>The primary reason is that the compiler calls the destructor for end-of-lifetime which includes exception unwind and success unwind and unwind of a moved-from object. If the destructor is considered a signal to the Callback, then the meaning for exception unwind is <em>ignore</em> and success unwind is serendipitous-success and moved-from object unwind is <em>ignore</em>. This would force Callback destructors to handle the two cases explicitly by maintaining state; “was error() called?”, “was value() called?”, “is the object moved-from?”. Also, using the destructor to signal serendipitous-success leaves blocking as the only option for holding the lifetime of the current object for the end of some other nested or dependent async function. The state and blocking implications are both great reasons to avoid using the destructor for the serendipitous-success signal. But there is another, async vs object lifetime.</p>
-<h3 id="value-and-error-arguments-style"><span class="header-section-number">4.4.2</span> value and error arguments style<a href="#value-and-error-arguments-style" class="self-link"></a></h3>
+<h3 id="value-and-error-arguments-style"><span class="header-section-number">5.5.2</span> value and error arguments style<a href="#value-and-error-arguments-style" class="self-link"></a></h3>
 <p>Using separate arguments to a callback to represent error and value channels involves some unfortunate tradeoffs. The completion signature <code>void(error_code ec, socket_type s)</code> for <code>async_accept()</code> in <span class="citation" data-cites="N4771">[<a href="#ref-N4771" role="doc-biblioref">N4771</a>]</span> implies that the <code>socket_type</code> must support an invalid or empty state when ec contains an error. This style requires that all the parameters used in a completion signature support invalid or empty states, because the same function will be called for error and success. This requires all implementations of callbacks to check the arguments for validity before using the arguments. These checks introduce branches, which can be particularly expensive instructions.</p>
 <p>Another way to represent this is to use <code>std::optional</code> explicitly on all the args so that the value types used as callback arguments are not required to support an invalid or empty state.</p>
 <blockquote>
 <p>NOTE: The error_code supports an empty state. The empty state for an error_code is the success code.</p>
 </blockquote>
-<h3 id="stdexpected-style"><span class="header-section-number">4.4.3</span> <code>std::expected</code> style<a href="#stdexpected-style" class="self-link"></a></h3>
+<h3 id="stdexpected-style"><span class="header-section-number">5.5.3</span> <code>std::expected</code> style<a href="#stdexpected-style" class="self-link"></a></h3>
 <p>Another callback pattern is to combine the value and error into one argument. The completion signature for the <code>async_accept()</code> example might change to look something like <code>void(expected&lt;error_code, socket_type&gt; e)</code>.</p>
 <p>This style does not require <code>socket_type</code> to support an invalid or empty state because it does not need to be constructed when there is an error. The branches required by the <a href="#value-and-error-arguments-style">value and error arguments style</a> are still required in this style, because the same function will be called for error and success.</p>
 <p>There is also an additional cost in the codegen for packing and unpacking <code>std::expected</code>. The cost for <code>std::expected</code> is not as bad as when the value is a <code>std::tuple</code> or a <code>std::variant</code> of <code>std::tuple</code>s, but still worse than when it is an plain argument to the function. For instance, something that transforms the value from one type to another has to check the error, unpack the value or error and repack the transformed value or original error into the outgoing expected type.</p>
-<h3 id="multiple-function-style"><span class="header-section-number">4.4.4</span> multiple function style<a href="#multiple-function-style" class="self-link"></a></h3>
+<h3 id="multiple-function-style"><span class="header-section-number">5.5.4</span> multiple function style<a href="#multiple-function-style" class="self-link"></a></h3>
 <p>Some of the tradeoffs encountered when mixing errors and values into the same ‘channel’ (where function arguments and function return values are both channels for communication with a function), motivated the creation of the C++ exception channel. C++ exceptions do not require the implementation of a function to check for the validity of function return values before using them and do not require that function return values support invalid or empty states (basically re-implementing <code>std::optional</code> in each type) nor require the use of types that combine error/value alternatives like <code>std::expected</code>.</p>
 <p>Using multiple functions for error and value is equivalent to the separation of <code>return value</code> and <code>throw</code>/<code>catch</code> in the language. Using multiple functions for error and value produces very different tradeoffs than when mixing error and value together in one function. The [<code>std::promise</code> type:] is an example of using multiple functions for error and value that already exists.</p>
 <p>A challenge with the [<code>std::promise</code> type:] is that it is a type with only one implementation, whereas callbacks are intended to be a concept or signature with many implementations. There are several examples of concepts that use multiple functions for error and value. These concepts primarily differ only in the names of the concepts and the names of the functions.</p>
@@ -1364,7 +1441,7 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <li>overloads of each method allow different types to be supported without use of <code>std::variant</code></li>
 <li>overloads of each method allow different numbers of arguments to be supported without use of <code>std::optional</code> or <code>std::variant&lt;std::tuple&lt;&gt;...&gt;</code></li>
 </ul>
-<h3 id="gratuitous"><span class="header-section-number">4.4.5</span> gratuitous<a href="#gratuitous" class="self-link"></a></h3>
+<h3 id="gratuitous"><span class="header-section-number">5.5.5</span> gratuitous<a href="#gratuitous" class="self-link"></a></h3>
 <blockquote>
 <p>Note: This is for those that object to named methods on an Invocable object.</p>
 </blockquote>
@@ -1383,13 +1460,13 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb36-5" title="5">  <span class="dt">void</span> <span class="kw">operator</span> <span class="cf">break</span> <span class="cf">return</span><span class="op">()</span> <span class="op">&amp;&amp;</span> <span class="kw">noexcept</span>;</a>
 <a class="sourceLine" id="cb36-6" title="6"><span class="op">}</span>;</a></code></pre></div>
 <p>other capabilities of <code>break return</code> are imagined in <a href="#scope_success-scope_fail-scope_done-blocks">scope_success, scope_fail, scope_done blocks</a></p>
-<h2 id="exception-noise"><span class="header-section-number">4.5</span> Exception noise<a href="#exception-noise" class="self-link"></a></h2>
+<h2 id="exception-noise"><span class="header-section-number">5.6</span> Exception noise<a href="#exception-noise" class="self-link"></a></h2>
 <p>Cancellation is very common when using async functions. Reporting cancellations as exceptions creates a lot of noise because cancellation is expected to occur frequently.</p>
 <p>This noise affects logging and debugging and other forms of analysis. exceptions used to report cancellation have to be filtered or categorized in many different tools and libraries to control for that noise.</p>
-<h2 id="sync-functions-not-a-typo"><span class="header-section-number">4.6</span> sync functions (not a typo)<a href="#sync-functions-not-a-typo" class="self-link"></a></h2>
+<h2 id="sync-functions-not-a-typo"><span class="header-section-number">5.7</span> sync functions (not a typo)<a href="#sync-functions-not-a-typo" class="self-link"></a></h2>
 <p>sync functions also need to complete with serendipitous-success.</p>
 <p>The clearest expression of this involves coroutines and generators. Another example is <code>std::optional</code>.</p>
-<h3 id="coroutine-generator"><span class="header-section-number">4.6.1</span> coroutine generator<a href="#coroutine-generator" class="self-link"></a></h3>
+<h3 id="coroutine-generator"><span class="header-section-number">5.7.1</span> coroutine generator<a href="#coroutine-generator" class="self-link"></a></h3>
 <p>This example is also made clearer by avoiding Iterators.</p>
 <div class="sourceCode" id="cb37"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb37-1" title="1"><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> T<span class="op">&gt;</span></a>
 <a class="sourceLine" id="cb37-2" title="2"><span class="kw">struct</span> generator <span class="op">{</span></a>
@@ -1420,10 +1497,10 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <p>Another way to say the same thing, is that types like <code>generator&lt;int&gt;</code> actually create a coroutine whose body is allowed to produce two different value types. <code>co_yield 42;</code> resolves the matching <code>g.next()</code> with an int while <code>co_return;</code> resumes the matching <code>g.next()</code> with void.</p>
 <p>Obviously <code>next()</code> returning <code>int</code> and <code>void</code> does not work in C++ today, which is why <code>generator</code> must model something more complicated like a Range where <code>begin()</code> and <code>operator++()</code> both produce iterators that are either a proxy to the yielded value or compare equal to <code>end()</code> when <code>void</code> is returned.</p>
 <p>While this value encoding seems natural for Range, it is not so palatable for <code>std::optional</code>.</p>
-<h3 id="stdoptional"><span class="header-section-number">4.6.2</span> <code>std::optional</code><a href="#stdoptional" class="self-link"></a></h3>
+<h3 id="stdoptional"><span class="header-section-number">5.7.2</span> <code>std::optional</code><a href="#stdoptional" class="self-link"></a></h3>
 <p>Range (with size 0|1), <code>std::optional</code> and even <code>std::variant&lt;std::monostate,..&gt;</code> are ways to model optional values in C++. They are themselves values that provide access to a value or nothing.</p>
-<p>It might seem that if cancellation is not an error that <code>std::optional</code> would allow cancellation to be composed into the return value rather than as an exception. This path was rejected previously because of the impact that it would have on code. all return values for all functions that could be cancelled or would use functions that could be cancelled would have to return <code>std::optional</code>. All callers of functions that returned <code>std::optional</code> would have to explicitly check, extract the value or forward on the empty <code>std::optional</code>. This wrapping and unwrapping is expensive at runtime and messy in the code and very error prone (the cancellation may not propagate when it should). These are all reasons that C++ exceptions have a separate channel and thus motivate a separate channel for serendipitous-success.</p>
-<h2 id="examples"><span class="header-section-number">4.7</span> Examples<a href="#examples" class="self-link"></a></h2>
+<p>It might seem that if cancellation is not an error that <code>std::optional</code> would allow cancellation to be composed into the return value rather than as an exception. This path was rejected previously because of the impact that it would have on code. all return values for all functions that could be cancelled or would use functions that could be cancelled would have to return <code>std::optional</code>. All callers of functions that returned <code>std::optional</code> would have to explicitly check, extract the value or forward on the empty <code>std::optional</code>. This wrapping and unwrapping is expensive at runtime and messy in the code and very error prone (the cancellation may not propagate when it should). These are all reasons that C++ exceptions have a separate channel and the same reasons motivate a separate channel for serendipitous-success.</p>
+<h2 id="examples"><span class="header-section-number">5.8</span> Examples<a href="#examples" class="self-link"></a></h2>
 <p>An imaginary world, where a sync function can complete with serendipitous-success, would have cleaner code.</p>
 <table>
 <caption><code>op()</code> that produces an empty value when a feature is not supported vs. imaginary <code>op()</code> that emits serendipitous-success</caption>
@@ -1441,7 +1518,7 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <tr class="odd">
 <td><div class="sourceCode" id="cb38"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb38-1" title="1">std<span class="op">::</span>optional<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> op<span class="op">()</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb38-2" title="2">  <span class="cf">if</span> <span class="op">(!</span>has_feature<span class="op">())</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb38-3" title="3">    <span class="cf">return</span> <span class="op">{}</span>;</a>
+<a class="sourceLine" id="cb38-3" title="3">    <span class="cf">return</span> std<span class="op">::</span>nullopt; <span class="co">// &lt;---&gt;</span></a>
 <a class="sourceLine" id="cb38-4" title="4">  <span class="op">}</span></a>
 <a class="sourceLine" id="cb38-5" title="5">  <span class="cf">return</span> feature<span class="op">()</span>;</a>
 <a class="sourceLine" id="cb38-6" title="6"><span class="op">}</span></a>
@@ -1452,7 +1529,7 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb38-11" title="11">  <span class="cf">if</span> <span class="op">(!</span>i<span class="op">)</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb38-12" title="12">    <span class="cf">return</span>;</a>
 <a class="sourceLine" id="cb38-13" title="13">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb38-14" title="14">  <span class="co">// use *i..</span></a>
+<a class="sourceLine" id="cb38-14" title="14">  <span class="co">// use *i..               &lt;---&gt;</span></a>
 <a class="sourceLine" id="cb38-15" title="15"><span class="op">}</span> <span class="co">// jumps here when the feature is </span></a>
 <a class="sourceLine" id="cb38-16" title="16">  <span class="co">// not supported</span></a></code></pre></div></td>
 <td><div class="sourceCode" id="cb39"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb39-1" title="1"><span class="dt">int</span> op<span class="op">()</span> <span class="op">{</span></a>
@@ -1465,9 +1542,12 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb39-8" title="8"><span class="dt">void</span> foo<span class="op">()</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb39-9" title="9">  <span class="co">// ..</span></a>
 <a class="sourceLine" id="cb39-10" title="10">  <span class="kw">auto</span> i <span class="op">=</span> op<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb39-11" title="11">  <span class="co">// use i..</span></a>
-<a class="sourceLine" id="cb39-12" title="12"><span class="op">}</span> <span class="co">// jumps here when the feature is </span></a>
-<a class="sourceLine" id="cb39-13" title="13">  <span class="co">// not supported</span></a></code></pre></div></td>
+<a class="sourceLine" id="cb39-11" title="11">  <span class="co">// &lt;---</span></a>
+<a class="sourceLine" id="cb39-12" title="12">  <span class="co">// &lt;---</span></a>
+<a class="sourceLine" id="cb39-13" title="13">  <span class="co">// &lt;---</span></a>
+<a class="sourceLine" id="cb39-14" title="14">  <span class="co">// use i..</span></a>
+<a class="sourceLine" id="cb39-15" title="15"><span class="op">}</span> <span class="co">// jumps here when the feature is </span></a>
+<a class="sourceLine" id="cb39-16" title="16">  <span class="co">// not supported</span></a></code></pre></div></td>
 </tr>
 </tbody>
 </table>
@@ -1487,7 +1567,7 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <tr class="odd">
 <td><div class="sourceCode" id="cb40"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb40-1" title="1"><span class="dt">int</span> op<span class="op">()</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb40-2" title="2">  <span class="cf">if</span> <span class="op">(!</span>has_feature<span class="op">())</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb40-3" title="3">    <span class="cf">throw</span> unsupported_error<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb40-3" title="3">    <span class="cf">throw</span> unsupported_error<span class="op">()</span>; <span class="co">// &lt;---&gt;</span></a>
 <a class="sourceLine" id="cb40-4" title="4">  <span class="op">}</span></a>
 <a class="sourceLine" id="cb40-5" title="5">  <span class="cf">return</span> feature<span class="op">()</span>;</a>
 <a class="sourceLine" id="cb40-6" title="6"><span class="op">}</span></a>
@@ -1496,8 +1576,8 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb40-9" title="9">  <span class="co">// ..</span></a>
 <a class="sourceLine" id="cb40-10" title="10">  <span class="cf">try</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb40-11" title="11">    <span class="kw">auto</span> i <span class="op">=</span> op<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb40-12" title="12">    <span class="co">// use *i..</span></a>
-<a class="sourceLine" id="cb40-13" title="13">  <span class="op">}</span> <span class="cf">catch</span><span class="op">(</span><span class="kw">const</span> unsupported_error<span class="op">&amp;)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb40-12" title="12">    <span class="co">// use i..</span></a>
+<a class="sourceLine" id="cb40-13" title="13">  <span class="op">}</span> <span class="cf">catch</span><span class="op">(</span><span class="kw">const</span> unsupported_error<span class="op">&amp;)</span> <span class="op">{</span> </a>
 <a class="sourceLine" id="cb40-14" title="14">    <span class="cf">return</span>;</a>
 <a class="sourceLine" id="cb40-15" title="15">  <span class="op">}</span></a>
 <a class="sourceLine" id="cb40-16" title="16"><span class="op">}</span> <span class="co">// jumps here when the feature is </span></a>
@@ -1511,14 +1591,18 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb41-7" title="7"></a>
 <a class="sourceLine" id="cb41-8" title="8"><span class="dt">void</span> foo<span class="op">()</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb41-9" title="9">  <span class="co">// ..</span></a>
-<a class="sourceLine" id="cb41-10" title="10">  <span class="kw">auto</span> i <span class="op">=</span> op<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb41-11" title="11">  <span class="co">// use i..</span></a>
-<a class="sourceLine" id="cb41-12" title="12"><span class="op">}</span> <span class="co">// jumps here when the feature is </span></a>
-<a class="sourceLine" id="cb41-13" title="13">  <span class="co">// not supported</span></a></code></pre></div></td>
+<a class="sourceLine" id="cb41-10" title="10">  <span class="co">// &lt;---</span></a>
+<a class="sourceLine" id="cb41-11" title="11">  <span class="kw">auto</span> i <span class="op">=</span> op<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb41-12" title="12">  <span class="co">// use i..</span></a>
+<a class="sourceLine" id="cb41-13" title="13">  <span class="co">// &lt;---</span></a>
+<a class="sourceLine" id="cb41-14" title="14">  <span class="co">// &lt;---</span></a>
+<a class="sourceLine" id="cb41-15" title="15">  <span class="co">// &lt;---</span></a>
+<a class="sourceLine" id="cb41-16" title="16"><span class="op">}</span> <span class="co">// jumps here when the feature is </span></a>
+<a class="sourceLine" id="cb41-17" title="17">  <span class="co">// not supported</span></a></code></pre></div></td>
 </tr>
 </tbody>
 </table>
-<h3 id="fgh"><span class="header-section-number">4.7.1</span> <code>f(g(h()))</code><a href="#fgh" class="self-link"></a></h3>
+<h3 id="fgh"><span class="header-section-number">5.8.1</span> <code>f(g(h()))</code><a href="#fgh" class="self-link"></a></h3>
 <p>Given a simple composition of the functions <code>f()</code>, <code>g()</code>, <code>h()</code>, demonstrate various forms of cancellation within their implementations.</p>
 <ul>
 <li><code>h()</code> will return a task that produces a void result each time it is invoked (unless it has been cancelled)</li>
@@ -1551,13 +1635,15 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 </tr>
 <tr class="even">
 <td><div class="sourceCode" id="cb44"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb44-1" title="1"><span class="kw">using</span> void_value <span class="op">=</span> tuple<span class="op">&lt;&gt;</span>;</a>
-<a class="sourceLine" id="cb44-2" title="2"><span class="kw">auto</span> h<span class="op">(</span>stop_token stop<span class="op">)</span> </a>
-<a class="sourceLine" id="cb44-3" title="3">  <span class="op">-&gt;</span> optional<span class="op">&lt;</span>void_value<span class="op">&gt;</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb44-4" title="4">  <span class="cf">if</span><span class="op">(</span>stop<span class="op">.</span>stop_requested<span class="op">())</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb44-5" title="5">    <span class="cf">return</span> nullopt;</a>
-<a class="sourceLine" id="cb44-6" title="6">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb44-7" title="7">  <span class="cf">return</span> void_value<span class="op">{}</span>;</a>
-<a class="sourceLine" id="cb44-8" title="8"><span class="op">}</span></a></code></pre></div></td>
+<a class="sourceLine" id="cb44-2" title="2"><span class="kw">auto</span> h<span class="op">(</span>stop_token stop<span class="op">)</span>   <span class="co">//  &lt;---&gt;</span></a>
+<a class="sourceLine" id="cb44-3" title="3">  <span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb44-4" title="4">  <span class="op">-&gt;</span> optional<span class="op">&lt;</span>void_value<span class="op">&gt;</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb44-5" title="5">  <span class="cf">if</span><span class="op">(</span>stop<span class="op">.</span>stop_requested<span class="op">())</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb44-6" title="6">    <span class="cf">return</span> nullopt;</a>
+<a class="sourceLine" id="cb44-7" title="7">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb44-8" title="8">  <span class="cf">return</span> void_value<span class="op">{}</span>;</a>
+<a class="sourceLine" id="cb44-9" title="9">  <span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb44-10" title="10"><span class="op">}</span></a></code></pre></div></td>
 <td><div class="sourceCode" id="cb45"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb45-1" title="1"><span class="kw">using</span> void_value <span class="op">=</span> tuple<span class="op">&lt;&gt;</span>;</a>
 <a class="sourceLine" id="cb45-2" title="2"><span class="kw">auto</span> h<span class="op">()</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb45-3" title="3">  <span class="cf">return</span> <span class="op">[](</span>stop_token stop<span class="op">)</span> </a>
@@ -1570,23 +1656,25 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb45-10" title="10"><span class="op">}</span></a></code></pre></div></td>
 </tr>
 <tr class="odd">
-<td><div class="sourceCode" id="cb46"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb46-1" title="1"><span class="kw">auto</span> g<span class="op">(</span>stop_token stop<span class="op">)</span> </a>
-<a class="sourceLine" id="cb46-2" title="2">  <span class="op">-&gt;</span> optional<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb46-3" title="3">  <span class="dt">int</span> count <span class="op">=</span> <span class="dv">0</span>;</a>
-<a class="sourceLine" id="cb46-4" title="4">  stop_source stopInner;</a>
-<a class="sourceLine" id="cb46-5" title="5">  <span class="cf">for</span> <span class="op">(</span>;;<span class="op">)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb46-6" title="6">    <span class="cf">if</span> <span class="op">(</span>stop<span class="op">.</span>stop_requested<span class="op">())</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb46-7" title="7">      stopInner<span class="op">.</span>request_stop<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb46-8" title="8">    <span class="op">}</span></a>
-<a class="sourceLine" id="cb46-9" title="9">    <span class="cf">if</span> <span class="op">(!</span>h<span class="op">(</span>stopInner<span class="op">.</span>get_token<span class="op">()))</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb46-10" title="10">      <span class="cf">break</span>;</a>
-<a class="sourceLine" id="cb46-11" title="11">    <span class="op">}</span></a>
-<a class="sourceLine" id="cb46-12" title="12">    <span class="cf">if</span> <span class="op">(++</span>count <span class="op">&gt;=</span> <span class="dv">9</span><span class="op">)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb46-13" title="13">      stopInner<span class="op">.</span>request_stop<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb46-14" title="14">    <span class="op">}</span></a>
-<a class="sourceLine" id="cb46-15" title="15">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb46-16" title="16">  <span class="cf">return</span> count;</a>
-<a class="sourceLine" id="cb46-17" title="17"><span class="op">}</span></a></code></pre></div></td>
+<td><div class="sourceCode" id="cb46"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb46-1" title="1"><span class="kw">auto</span> g<span class="op">(</span>stop_token stop<span class="op">)</span>   <span class="co">//   &lt;---&gt;</span></a>
+<a class="sourceLine" id="cb46-2" title="2">  <span class="co">// ----&gt;</span></a>
+<a class="sourceLine" id="cb46-3" title="3">  <span class="op">-&gt;</span> optional<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb46-4" title="4">  <span class="dt">int</span> count <span class="op">=</span> <span class="dv">0</span>;</a>
+<a class="sourceLine" id="cb46-5" title="5">  stop_source stopInner;</a>
+<a class="sourceLine" id="cb46-6" title="6">  <span class="cf">for</span> <span class="op">(</span>;;<span class="op">)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb46-7" title="7">    <span class="cf">if</span> <span class="op">(</span>stop<span class="op">.</span>stop_requested<span class="op">())</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb46-8" title="8">      stopInner<span class="op">.</span>request_stop<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb46-9" title="9">    <span class="op">}</span></a>
+<a class="sourceLine" id="cb46-10" title="10">    <span class="cf">if</span> <span class="op">(!</span>h<span class="op">(</span>stopInner<span class="op">.</span>get_token<span class="op">()))</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb46-11" title="11">      <span class="cf">break</span>;</a>
+<a class="sourceLine" id="cb46-12" title="12">    <span class="op">}</span></a>
+<a class="sourceLine" id="cb46-13" title="13">    <span class="cf">if</span> <span class="op">(++</span>count <span class="op">&gt;=</span> <span class="dv">9</span><span class="op">)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb46-14" title="14">      stopInner<span class="op">.</span>request_stop<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb46-15" title="15">    <span class="op">}</span></a>
+<a class="sourceLine" id="cb46-16" title="16">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb46-17" title="17">  <span class="cf">return</span> count;</a>
+<a class="sourceLine" id="cb46-18" title="18">  <span class="co">//  ---&gt;</span></a>
+<a class="sourceLine" id="cb46-19" title="19"><span class="op">}</span></a></code></pre></div></td>
 <td><div class="sourceCode" id="cb47"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb47-1" title="1"><span class="kw">auto</span> g<span class="op">(</span><span class="kw">auto</span> h<span class="op">)</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb47-2" title="2">  <span class="cf">return</span> <span class="op">[</span>h<span class="op">](</span>stop_token stop<span class="op">)</span> </a>
 <a class="sourceLine" id="cb47-3" title="3">    <span class="op">-&gt;</span> optional<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> <span class="op">{</span></a>
@@ -1608,7 +1696,7 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb47-19" title="19"><span class="op">}</span></a></code></pre></div></td>
 </tr>
 <tr class="even">
-<td><div class="sourceCode" id="cb48"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb48-1" title="1"><span class="dt">void</span> f<span class="op">()</span> <span class="op">{</span></a>
+<td><div class="sourceCode" id="cb48"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb48-1" title="1"><span class="dt">void</span> f<span class="op">()</span> <span class="op">{</span>               <span class="co">//   &lt;---&gt;</span></a>
 <a class="sourceLine" id="cb48-2" title="2">  exception_ptr ex;</a>
 <a class="sourceLine" id="cb48-3" title="3">  stop_source stop;</a>
 <a class="sourceLine" id="cb48-4" title="4">  optional<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> count;</a>
@@ -1794,40 +1882,43 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb53-3" title="3">  <span class="cf">return</span> <span class="op">[](</span>stop_token stop<span class="op">)</span> </a>
 <a class="sourceLine" id="cb53-4" title="4">    <span class="op">-&gt;</span> optional<span class="op">&lt;</span>void_value<span class="op">&gt;</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb53-5" title="5">    <span class="cf">if</span><span class="op">(</span>stop<span class="op">.</span>stop_requested<span class="op">())</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb53-6" title="6">      <span class="cf">return</span> nullopt;</a>
+<a class="sourceLine" id="cb53-6" title="6">      <span class="cf">return</span> nullopt;    <span class="co">//   &lt;---&gt;</span></a>
 <a class="sourceLine" id="cb53-7" title="7">    <span class="op">}</span></a>
-<a class="sourceLine" id="cb53-8" title="8">    <span class="cf">return</span> void_value<span class="op">{}</span>;</a>
+<a class="sourceLine" id="cb53-8" title="8">    <span class="cf">return</span> void_value<span class="op">{}</span>; <span class="co">//   &lt;---&gt;</span></a>
 <a class="sourceLine" id="cb53-9" title="9">  <span class="op">}</span>;</a>
 <a class="sourceLine" id="cb53-10" title="10"><span class="op">}</span></a></code></pre></div></td>
-<td><div class="sourceCode" id="cb54"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb54-1" title="1"><span class="kw">auto</span> h<span class="op">()</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb54-2" title="2">  <span class="cf">return</span> <span class="op">[](</span>stop_token stop<span class="op">)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb54-3" title="3">    <span class="cf">if</span><span class="op">(</span>stop<span class="op">.</span>stop_requested<span class="op">())</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb54-4" title="4">      <span class="cf">break</span> <span class="cf">return</span>;</a>
-<a class="sourceLine" id="cb54-5" title="5">    <span class="op">}</span></a>
-<a class="sourceLine" id="cb54-6" title="6">    <span class="cf">return</span>;</a>
-<a class="sourceLine" id="cb54-7" title="7">  <span class="op">}</span>;</a>
-<a class="sourceLine" id="cb54-8" title="8"><span class="op">}</span></a></code></pre></div></td>
+<td><div class="sourceCode" id="cb54"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb54-1" title="1"><span class="co">// &lt;---</span></a>
+<a class="sourceLine" id="cb54-2" title="2"><span class="kw">auto</span> h<span class="op">()</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb54-3" title="3">  <span class="cf">return</span> <span class="op">[](</span>stop_token stop<span class="op">)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb54-4" title="4">    <span class="co">// &lt;---</span></a>
+<a class="sourceLine" id="cb54-5" title="5">    <span class="cf">if</span><span class="op">(</span>stop<span class="op">.</span>stop_requested<span class="op">())</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb54-6" title="6">      <span class="cf">break</span> <span class="cf">return</span>;</a>
+<a class="sourceLine" id="cb54-7" title="7">    <span class="op">}</span></a>
+<a class="sourceLine" id="cb54-8" title="8">    <span class="cf">return</span>;</a>
+<a class="sourceLine" id="cb54-9" title="9">  <span class="op">}</span>;</a>
+<a class="sourceLine" id="cb54-10" title="10"><span class="op">}</span></a></code></pre></div></td>
 </tr>
 <tr class="even">
 <td><div class="sourceCode" id="cb55"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb55-1" title="1"><span class="kw">auto</span> g<span class="op">(</span><span class="kw">auto</span> h<span class="op">)</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb55-2" title="2">  <span class="cf">return</span> <span class="op">[</span>h<span class="op">](</span>stop_token stop<span class="op">)</span> </a>
-<a class="sourceLine" id="cb55-3" title="3">    <span class="op">-&gt;</span> optional<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb55-3" title="3">    <span class="op">-&gt;</span> optional<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> <span class="op">{</span>  <span class="co">//    &lt;---&gt;</span></a>
 <a class="sourceLine" id="cb55-4" title="4">    <span class="dt">int</span> count <span class="op">=</span> <span class="dv">0</span>;</a>
 <a class="sourceLine" id="cb55-5" title="5">    stop_source stopInner;</a>
 <a class="sourceLine" id="cb55-6" title="6">    <span class="cf">for</span> <span class="op">(</span>;;<span class="op">)</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb55-7" title="7">      <span class="cf">if</span> <span class="op">(</span>stop<span class="op">.</span>stop_requested<span class="op">())</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb55-8" title="8">        stopInner<span class="op">.</span>request_stop<span class="op">()</span>;</a>
 <a class="sourceLine" id="cb55-9" title="9">      <span class="op">}</span></a>
-<a class="sourceLine" id="cb55-10" title="10">      <span class="cf">if</span> <span class="op">(!</span>h<span class="op">(</span>stopInner<span class="op">.</span>get_token<span class="op">()))</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb55-11" title="11">        <span class="cf">break</span>;</a>
-<a class="sourceLine" id="cb55-12" title="12">      <span class="op">}</span></a>
-<a class="sourceLine" id="cb55-13" title="13">      <span class="cf">if</span> <span class="op">(++</span>count <span class="op">&gt;=</span> <span class="dv">9</span><span class="op">)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb55-14" title="14">        stopInner<span class="op">.</span>request_stop<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb55-15" title="15">      <span class="op">}</span></a>
-<a class="sourceLine" id="cb55-16" title="16">    <span class="op">}</span></a>
-<a class="sourceLine" id="cb55-17" title="17">    <span class="cf">return</span> count;</a>
-<a class="sourceLine" id="cb55-18" title="18">  <span class="op">}</span>;</a>
-<a class="sourceLine" id="cb55-19" title="19"><span class="op">}</span></a></code></pre></div></td>
+<a class="sourceLine" id="cb55-10" title="10">      <span class="co">// ---&gt;</span></a>
+<a class="sourceLine" id="cb55-11" title="11">      <span class="cf">if</span> <span class="op">(!</span>h<span class="op">(</span>stopInner<span class="op">.</span>get_token<span class="op">()))</span> <span class="op">{</span> <span class="co">// &gt;</span></a>
+<a class="sourceLine" id="cb55-12" title="12">        <span class="cf">break</span>;                      <span class="co">// &lt;--&gt;</span></a>
+<a class="sourceLine" id="cb55-13" title="13">      <span class="op">}</span></a>
+<a class="sourceLine" id="cb55-14" title="14">      <span class="cf">if</span> <span class="op">(++</span>count <span class="op">&gt;=</span> <span class="dv">9</span><span class="op">)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb55-15" title="15">        stopInner<span class="op">.</span>request_stop<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb55-16" title="16">      <span class="op">}</span></a>
+<a class="sourceLine" id="cb55-17" title="17">    <span class="op">}</span></a>
+<a class="sourceLine" id="cb55-18" title="18">    <span class="cf">return</span> count;</a>
+<a class="sourceLine" id="cb55-19" title="19">  <span class="op">}</span>;</a>
+<a class="sourceLine" id="cb55-20" title="20"><span class="op">}</span></a></code></pre></div></td>
 <td><div class="sourceCode" id="cb56"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb56-1" title="1"><span class="kw">auto</span> g<span class="op">(</span><span class="kw">auto</span> h<span class="op">)</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb56-2" title="2">  <span class="cf">return</span> <span class="op">[</span>h<span class="op">](</span>stop_token stop<span class="op">)</span> </a>
 <a class="sourceLine" id="cb56-3" title="3">    <span class="op">-&gt;</span> <span class="dt">int</span> <span class="op">{</span></a>
@@ -1853,46 +1944,50 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <td><div class="sourceCode" id="cb57"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb57-1" title="1"><span class="dt">void</span> f<span class="op">(</span><span class="kw">auto</span> g<span class="op">)</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb57-2" title="2">  exception_ptr ex;</a>
 <a class="sourceLine" id="cb57-3" title="3">  stop_source stop;</a>
-<a class="sourceLine" id="cb57-4" title="4">  optional<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> count;</a>
+<a class="sourceLine" id="cb57-4" title="4">  optional<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> count;         <span class="co">//   &lt;----&gt;</span></a>
 <a class="sourceLine" id="cb57-5" title="5">  thread t<span class="op">{[&amp;](){</span></a>
 <a class="sourceLine" id="cb57-6" title="6">    this_thread<span class="op">::</span>sleep_for<span class="op">(</span><span class="dv">100</span><span class="bu">ms</span><span class="op">)</span>;</a>
 <a class="sourceLine" id="cb57-7" title="7">    stop<span class="op">.</span>request_stop<span class="op">()</span>;</a>
 <a class="sourceLine" id="cb57-8" title="8">  <span class="op">}}</span>;</a>
-<a class="sourceLine" id="cb57-9" title="9">  <span class="cf">try</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb57-10" title="10">    count <span class="op">=</span> g<span class="op">(</span>stop<span class="op">.</span>get_token<span class="op">())</span>;</a>
-<a class="sourceLine" id="cb57-11" title="11">  <span class="op">}</span> <span class="cf">catch</span><span class="op">(...)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb57-12" title="12">    ex <span class="op">=</span> current_exception<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb57-13" title="13">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb57-14" title="14">  <span class="kw">auto</span> w <span class="op">=</span> <span class="op">(</span></a>
-<a class="sourceLine" id="cb57-15" title="15">    <span class="op">!!</span>count <span class="op">?</span> <span class="st">&quot;completed&quot;</span> <span class="op">:</span></a>
-<a class="sourceLine" id="cb57-16" title="16">    <span class="op">!!</span>ex <span class="op">?</span> <span class="st">&quot;failed&quot;</span> <span class="op">:</span></a>
-<a class="sourceLine" id="cb57-17" title="17">    <span class="op">!</span>count <span class="op">?</span> <span class="st">&quot;stopped&quot;</span> <span class="op">:</span> <span class="st">&quot;invalid&quot;</span><span class="op">)</span>;</a>
-<a class="sourceLine" id="cb57-18" title="18">  printf<span class="op">(</span><span class="st">&quot;which </span><span class="sc">%s</span><span class="st">, count </span><span class="sc">%d</span><span class="st">&quot;</span>, w, <span class="op">*</span>count<span class="op">)</span>;</a>
-<a class="sourceLine" id="cb57-19" title="19">  t<span class="op">.</span>join<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb57-20" title="20"><span class="op">}</span></a></code></pre></div></td>
+<a class="sourceLine" id="cb57-9" title="9">  <span class="kw">auto</span> print <span class="op">=</span> <span class="op">[&amp;]()</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb57-10" title="10">    t<span class="op">.</span>join<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb57-11" title="11">    <span class="kw">auto</span> w <span class="op">=</span> <span class="op">(</span></a>
+<a class="sourceLine" id="cb57-12" title="12">      <span class="op">!!</span>count <span class="op">?</span> <span class="st">&quot;completed&quot;</span> <span class="op">:</span></a>
+<a class="sourceLine" id="cb57-13" title="13">      <span class="op">!!</span>ex <span class="op">?</span> <span class="st">&quot;failed&quot;</span> <span class="op">:</span></a>
+<a class="sourceLine" id="cb57-14" title="14">      <span class="op">!</span>count <span class="op">?</span>                  <span class="co">//   &lt;----&gt;</span></a>
+<a class="sourceLine" id="cb57-15" title="15">        <span class="st">&quot;stopped&quot;</span> <span class="op">:</span> <span class="st">&quot;invalid&quot;</span><span class="op">)</span>;</a>
+<a class="sourceLine" id="cb57-16" title="16">    printf<span class="op">(</span><span class="st">&quot;which </span><span class="sc">%s</span><span class="st">, count </span><span class="sc">%d</span><span class="st">&quot;</span>, w, <span class="op">*</span>count<span class="op">)</span>;</a>
+<a class="sourceLine" id="cb57-17" title="17">  <span class="op">}</span>;</a>
+<a class="sourceLine" id="cb57-18" title="18">  scope_guard <span class="op">{</span>print<span class="op">()</span>;<span class="op">}</span></a>
+<a class="sourceLine" id="cb57-19" title="19">  <span class="cf">try</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb57-20" title="20">    count <span class="op">=</span> g<span class="op">(</span>stop<span class="op">.</span>get_token<span class="op">())</span>;</a>
+<a class="sourceLine" id="cb57-21" title="21">  <span class="op">}</span> <span class="cf">catch</span><span class="op">(...)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb57-22" title="22">    ex <span class="op">=</span> current_exception<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb57-23" title="23">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb57-24" title="24"><span class="op">}</span></a></code></pre></div></td>
 <td><div class="sourceCode" id="cb58"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb58-1" title="1"><span class="dt">void</span> f<span class="op">(</span><span class="kw">auto</span> g<span class="op">)</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb58-2" title="2">  exception_ptr ex;</a>
 <a class="sourceLine" id="cb58-3" title="3">  stop_source stop;</a>
-<a class="sourceLine" id="cb58-4" title="4">  optional<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> count;</a>
+<a class="sourceLine" id="cb58-4" title="4">  <span class="dt">int</span> count <span class="op">=</span> <span class="dv">0</span>;</a>
 <a class="sourceLine" id="cb58-5" title="5">  thread t<span class="op">{[&amp;](){</span></a>
 <a class="sourceLine" id="cb58-6" title="6">    this_thread<span class="op">::</span>sleep_for<span class="op">(</span><span class="dv">100</span><span class="bu">ms</span><span class="op">)</span>;</a>
 <a class="sourceLine" id="cb58-7" title="7">    stop<span class="op">.</span>request_stop<span class="op">()</span>;</a>
 <a class="sourceLine" id="cb58-8" title="8">  <span class="op">}}</span>;</a>
 <a class="sourceLine" id="cb58-9" title="9">  <span class="kw">auto</span> print <span class="op">=</span> <span class="op">[&amp;]()</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb58-10" title="10">    <span class="kw">auto</span> w <span class="op">=</span> <span class="op">(</span></a>
-<a class="sourceLine" id="cb58-11" title="11">      <span class="op">!!</span>count <span class="op">?</span> <span class="st">&quot;completed&quot;</span> <span class="op">:</span></a>
-<a class="sourceLine" id="cb58-12" title="12">      <span class="op">!!</span>ex <span class="op">?</span> <span class="st">&quot;failed&quot;</span> <span class="op">:</span></a>
-<a class="sourceLine" id="cb58-13" title="13">      <span class="op">!</span>count <span class="op">?</span> <span class="st">&quot;stopped&quot;</span> <span class="op">:</span> <span class="st">&quot;invalid&quot;</span><span class="op">)</span>;</a>
-<a class="sourceLine" id="cb58-14" title="14">    printf<span class="op">(</span><span class="st">&quot;which </span><span class="sc">%s</span><span class="st">, count </span><span class="sc">%d</span><span class="st">&quot;</span>, w, <span class="op">*</span>count<span class="op">)</span>;</a>
-<a class="sourceLine" id="cb58-15" title="15">  <span class="op">}</span>;</a>
-<a class="sourceLine" id="cb58-16" title="16">  <span class="cf">try</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb58-17" title="17">    scope_done <span class="op">{</span>print<span class="op">()</span>;<span class="op">}</span></a>
-<a class="sourceLine" id="cb58-18" title="18">    count <span class="op">=</span> g<span class="op">(</span>stop<span class="op">.</span>get_token<span class="op">())</span>;</a>
-<a class="sourceLine" id="cb58-19" title="19">  <span class="op">}</span> <span class="cf">catch</span><span class="op">(...)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb58-20" title="20">    ex <span class="op">=</span> current_exception<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb58-21" title="21">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb58-22" title="22">  print<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb58-23" title="23">  t<span class="op">.</span>join<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb58-10" title="10">    t<span class="op">.</span>join<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb58-11" title="11">    <span class="kw">auto</span> w <span class="op">=</span> <span class="op">(</span></a>
+<a class="sourceLine" id="cb58-12" title="12">      <span class="op">!!</span>count <span class="op">?</span> <span class="st">&quot;completed&quot;</span> <span class="op">:</span></a>
+<a class="sourceLine" id="cb58-13" title="13">      <span class="op">!!</span>ex <span class="op">?</span> <span class="st">&quot;failed&quot;</span> <span class="op">:</span></a>
+<a class="sourceLine" id="cb58-14" title="14">      stop<span class="op">.</span>stop_requested<span class="op">()</span> <span class="op">?</span> </a>
+<a class="sourceLine" id="cb58-15" title="15">        <span class="st">&quot;stopped&quot;</span> <span class="op">:</span> <span class="st">&quot;invalid&quot;</span><span class="op">)</span>;</a>
+<a class="sourceLine" id="cb58-16" title="16">    printf<span class="op">(</span><span class="st">&quot;which </span><span class="sc">%s</span><span class="st">, count </span><span class="sc">%d</span><span class="st">&quot;</span>, w, count<span class="op">)</span>;</a>
+<a class="sourceLine" id="cb58-17" title="17">  <span class="op">}</span>;</a>
+<a class="sourceLine" id="cb58-18" title="18">  scope_guard <span class="op">{</span>print<span class="op">()</span>;<span class="op">}</span></a>
+<a class="sourceLine" id="cb58-19" title="19">  <span class="cf">try</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb58-20" title="20">    count <span class="op">=</span> g<span class="op">(</span>stop<span class="op">.</span>get_token<span class="op">())</span>;</a>
+<a class="sourceLine" id="cb58-21" title="21">  <span class="op">}</span> <span class="cf">catch</span><span class="op">(...)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb58-22" title="22">    ex <span class="op">=</span> current_exception<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb58-23" title="23">  <span class="op">}</span></a>
 <a class="sourceLine" id="cb58-24" title="24"><span class="op">}</span></a></code></pre></div></td>
 </tr>
 </tbody>
@@ -1916,19 +2011,20 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb59-2" title="2"><span class="kw">auto</span> h<span class="op">()</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb59-3" title="3">  <span class="cf">return</span> <span class="op">[](</span>stop_token stop<span class="op">)</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb59-4" title="4">    <span class="cf">if</span><span class="op">(</span>stop<span class="op">.</span>stop_requested<span class="op">())</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb59-5" title="5">      <span class="cf">throw</span> stopped_exception<span class="op">{}</span>;</a>
+<a class="sourceLine" id="cb59-5" title="5">      <span class="cf">throw</span> stopped_exception<span class="op">{}</span>; <span class="co">// &lt;---&gt;</span></a>
 <a class="sourceLine" id="cb59-6" title="6">    <span class="op">}</span></a>
 <a class="sourceLine" id="cb59-7" title="7">    <span class="cf">return</span> ;</a>
 <a class="sourceLine" id="cb59-8" title="8">  <span class="op">}</span>;</a>
 <a class="sourceLine" id="cb59-9" title="9"><span class="op">}</span></a></code></pre></div></td>
-<td><div class="sourceCode" id="cb60"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb60-1" title="1"><span class="kw">auto</span> h<span class="op">()</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb60-2" title="2">  <span class="cf">return</span> <span class="op">[](</span>stop_token stop<span class="op">)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb60-3" title="3">    <span class="cf">if</span><span class="op">(</span>stop<span class="op">.</span>stop_requested<span class="op">())</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb60-4" title="4">      <span class="cf">break</span> <span class="cf">return</span>;</a>
-<a class="sourceLine" id="cb60-5" title="5">    <span class="op">}</span></a>
-<a class="sourceLine" id="cb60-6" title="6">    <span class="cf">return</span>;</a>
-<a class="sourceLine" id="cb60-7" title="7">  <span class="op">}</span>;</a>
-<a class="sourceLine" id="cb60-8" title="8"><span class="op">}</span></a></code></pre></div></td>
+<td><div class="sourceCode" id="cb60"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb60-1" title="1"><span class="co">// &lt;---</span></a>
+<a class="sourceLine" id="cb60-2" title="2"><span class="kw">auto</span> h<span class="op">()</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb60-3" title="3">  <span class="cf">return</span> <span class="op">[](</span>stop_token stop<span class="op">)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb60-4" title="4">    <span class="cf">if</span><span class="op">(</span>stop<span class="op">.</span>stop_requested<span class="op">())</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb60-5" title="5">      <span class="cf">break</span> <span class="cf">return</span>;</a>
+<a class="sourceLine" id="cb60-6" title="6">    <span class="op">}</span></a>
+<a class="sourceLine" id="cb60-7" title="7">    <span class="cf">return</span>;</a>
+<a class="sourceLine" id="cb60-8" title="8">  <span class="op">}</span>;</a>
+<a class="sourceLine" id="cb60-9" title="9"><span class="op">}</span></a></code></pre></div></td>
 </tr>
 <tr class="even">
 <td><div class="sourceCode" id="cb61"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb61-1" title="1"><span class="kw">auto</span> g<span class="op">(</span><span class="kw">auto</span> h<span class="op">)</span> <span class="op">{</span></a>
@@ -1941,17 +2037,18 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb61-8" title="8">        stopInner<span class="op">.</span>request_stop<span class="op">()</span>;</a>
 <a class="sourceLine" id="cb61-9" title="9">      <span class="op">}</span></a>
 <a class="sourceLine" id="cb61-10" title="10">      <span class="cf">try</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb61-11" title="11">        h<span class="op">(</span>stopInner<span class="op">.</span>get_token<span class="op">())</span>;</a>
-<a class="sourceLine" id="cb61-12" title="12">      <span class="op">}</span> <span class="cf">catch</span> <span class="op">(</span><span class="kw">const</span> stopped_exception<span class="op">&amp;)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb61-13" title="13">        <span class="cf">break</span>;</a>
-<a class="sourceLine" id="cb61-14" title="14">      <span class="op">}</span></a>
-<a class="sourceLine" id="cb61-15" title="15">      <span class="cf">if</span> <span class="op">(++</span>count <span class="op">&gt;=</span> <span class="dv">9</span><span class="op">)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb61-16" title="16">        stopInner<span class="op">.</span>request_stop<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb61-17" title="17">      <span class="op">}</span></a>
-<a class="sourceLine" id="cb61-18" title="18">    <span class="op">}</span></a>
-<a class="sourceLine" id="cb61-19" title="19">    <span class="cf">return</span> count;</a>
-<a class="sourceLine" id="cb61-20" title="20">  <span class="op">}</span>;</a>
-<a class="sourceLine" id="cb61-21" title="21"><span class="op">}</span></a></code></pre></div></td>
+<a class="sourceLine" id="cb61-11" title="11">        <span class="co">// ---&gt;</span></a>
+<a class="sourceLine" id="cb61-12" title="12">        h<span class="op">(</span>stopInner<span class="op">.</span>get_token<span class="op">())</span>;</a>
+<a class="sourceLine" id="cb61-13" title="13">      <span class="op">}</span> <span class="cf">catch</span> <span class="op">(</span><span class="kw">const</span> stopped_exception<span class="op">&amp;)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb61-14" title="14">        <span class="cf">break</span>;</a>
+<a class="sourceLine" id="cb61-15" title="15">      <span class="op">}</span></a>
+<a class="sourceLine" id="cb61-16" title="16">      <span class="cf">if</span> <span class="op">(++</span>count <span class="op">&gt;=</span> <span class="dv">9</span><span class="op">)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb61-17" title="17">        stopInner<span class="op">.</span>request_stop<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb61-18" title="18">      <span class="op">}</span></a>
+<a class="sourceLine" id="cb61-19" title="19">    <span class="op">}</span></a>
+<a class="sourceLine" id="cb61-20" title="20">    <span class="cf">return</span> count;</a>
+<a class="sourceLine" id="cb61-21" title="21">  <span class="op">}</span>;</a>
+<a class="sourceLine" id="cb61-22" title="22"><span class="op">}</span></a></code></pre></div></td>
 <td><div class="sourceCode" id="cb62"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb62-1" title="1"><span class="kw">auto</span> g<span class="op">(</span><span class="kw">auto</span> h<span class="op">)</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb62-2" title="2">  <span class="cf">return</span> <span class="op">[</span>h<span class="op">](</span>stop_token stop<span class="op">)</span> </a>
 <a class="sourceLine" id="cb62-3" title="3">    <span class="op">-&gt;</span> <span class="dt">int</span> <span class="op">{</span></a>
@@ -1964,14 +2061,16 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb62-10" title="10">      <span class="op">{</span></a>
 <a class="sourceLine" id="cb62-11" title="11">        scope_done <span class="op">{</span><span class="cf">break</span>;<span class="op">}</span></a>
 <a class="sourceLine" id="cb62-12" title="12">        h<span class="op">(</span>stopInner<span class="op">.</span>get_token<span class="op">())</span>;</a>
-<a class="sourceLine" id="cb62-13" title="13">      <span class="op">}</span></a>
-<a class="sourceLine" id="cb62-14" title="14">      <span class="cf">if</span> <span class="op">(++</span>count <span class="op">&gt;=</span> <span class="dv">9</span><span class="op">)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb62-15" title="15">        stopInner<span class="op">.</span>request_stop<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb62-16" title="16">      <span class="op">}</span></a>
-<a class="sourceLine" id="cb62-17" title="17">    <span class="op">}</span></a>
-<a class="sourceLine" id="cb62-18" title="18">    <span class="cf">return</span> count;</a>
-<a class="sourceLine" id="cb62-19" title="19">  <span class="op">}</span>;</a>
-<a class="sourceLine" id="cb62-20" title="20"><span class="op">}</span></a></code></pre></div></td>
+<a class="sourceLine" id="cb62-13" title="13">        <span class="co">// &lt;---</span></a>
+<a class="sourceLine" id="cb62-14" title="14">        <span class="co">// &lt;---</span></a>
+<a class="sourceLine" id="cb62-15" title="15">      <span class="op">}</span></a>
+<a class="sourceLine" id="cb62-16" title="16">      <span class="cf">if</span> <span class="op">(++</span>count <span class="op">&gt;=</span> <span class="dv">9</span><span class="op">)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb62-17" title="17">        stopInner<span class="op">.</span>request_stop<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb62-18" title="18">      <span class="op">}</span></a>
+<a class="sourceLine" id="cb62-19" title="19">    <span class="op">}</span></a>
+<a class="sourceLine" id="cb62-20" title="20">    <span class="cf">return</span> count;</a>
+<a class="sourceLine" id="cb62-21" title="21">  <span class="op">}</span>;</a>
+<a class="sourceLine" id="cb62-22" title="22"><span class="op">}</span></a></code></pre></div></td>
 </tr>
 <tr class="odd">
 <td><div class="sourceCode" id="cb63"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb63-1" title="1"><span class="dt">void</span> f<span class="op">(</span><span class="kw">auto</span> g<span class="op">)</span> <span class="op">{</span></a>
@@ -1982,19 +2081,22 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb63-6" title="6">    this_thread<span class="op">::</span>sleep_for<span class="op">(</span><span class="dv">100</span><span class="bu">ms</span><span class="op">)</span>;</a>
 <a class="sourceLine" id="cb63-7" title="7">    stop<span class="op">.</span>request_stop<span class="op">()</span>;</a>
 <a class="sourceLine" id="cb63-8" title="8">  <span class="op">}}</span>;</a>
-<a class="sourceLine" id="cb63-9" title="9">  <span class="cf">try</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb63-10" title="10">    count <span class="op">=</span> g<span class="op">(</span>stop<span class="op">.</span>get_token<span class="op">())</span>;</a>
-<a class="sourceLine" id="cb63-11" title="11">  <span class="op">}</span> <span class="cf">catch</span> <span class="op">(</span><span class="kw">const</span> stopped_exception<span class="op">&amp;)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb63-12" title="12">  <span class="op">}</span> <span class="cf">catch</span><span class="op">(...)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb63-13" title="13">    ex <span class="op">=</span> current_exception<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb63-14" title="14">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb63-15" title="15">  <span class="kw">auto</span> w <span class="op">=</span> <span class="op">(</span></a>
-<a class="sourceLine" id="cb63-16" title="16">    <span class="op">!!</span>count <span class="op">?</span> <span class="st">&quot;completed&quot;</span> <span class="op">:</span></a>
-<a class="sourceLine" id="cb63-17" title="17">    <span class="op">!!</span>ex <span class="op">?</span> <span class="st">&quot;failed&quot;</span> <span class="op">:</span></a>
-<a class="sourceLine" id="cb63-18" title="18">    <span class="op">!</span>count <span class="op">?</span> <span class="st">&quot;stopped&quot;</span> <span class="op">:</span> <span class="st">&quot;invalid&quot;</span><span class="op">)</span>;</a>
-<a class="sourceLine" id="cb63-19" title="19">  printf<span class="op">(</span><span class="st">&quot;which </span><span class="sc">%s</span><span class="st">, count </span><span class="sc">%d</span><span class="st">&quot;</span>, w, <span class="op">*</span>count<span class="op">)</span>;</a>
-<a class="sourceLine" id="cb63-20" title="20">  t<span class="op">.</span>join<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb63-21" title="21"><span class="op">}</span></a></code></pre></div></td>
+<a class="sourceLine" id="cb63-9" title="9">  <span class="kw">auto</span> print <span class="op">=</span> <span class="op">[&amp;]()</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb63-10" title="10">    t<span class="op">.</span>join<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb63-11" title="11">    <span class="kw">auto</span> w <span class="op">=</span> <span class="op">(</span></a>
+<a class="sourceLine" id="cb63-12" title="12">      <span class="op">!!</span>count <span class="op">?</span> <span class="st">&quot;completed&quot;</span> <span class="op">:</span></a>
+<a class="sourceLine" id="cb63-13" title="13">      <span class="op">!!</span>ex <span class="op">?</span> <span class="st">&quot;failed&quot;</span> <span class="op">:</span></a>
+<a class="sourceLine" id="cb63-14" title="14">      <span class="op">!</span>count <span class="op">?</span> <span class="st">&quot;stopped&quot;</span> <span class="op">:</span> <span class="st">&quot;invalid&quot;</span><span class="op">)</span>;</a>
+<a class="sourceLine" id="cb63-15" title="15">    printf<span class="op">(</span><span class="st">&quot;which </span><span class="sc">%s</span><span class="st">, count </span><span class="sc">%d</span><span class="st">&quot;</span>, w, <span class="op">*</span>count<span class="op">)</span>;</a>
+<a class="sourceLine" id="cb63-16" title="16">  <span class="op">}</span>;</a>
+<a class="sourceLine" id="cb63-17" title="17">  scope_guard <span class="op">{</span>print<span class="op">()</span>;<span class="op">}</span></a>
+<a class="sourceLine" id="cb63-18" title="18">  <span class="cf">try</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb63-19" title="19">    count <span class="op">=</span> g<span class="op">(</span>stop<span class="op">.</span>get_token<span class="op">())</span>;</a>
+<a class="sourceLine" id="cb63-20" title="20">  <span class="op">}</span> <span class="cf">catch</span> <span class="op">(</span><span class="kw">const</span> stopped_exception<span class="op">&amp;)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb63-21" title="21">  <span class="op">}</span> <span class="cf">catch</span><span class="op">(...)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb63-22" title="22">    ex <span class="op">=</span> current_exception<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb63-23" title="23">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb63-24" title="24"><span class="op">}</span></a></code></pre></div></td>
 <td><div class="sourceCode" id="cb64"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb64-1" title="1"><span class="dt">void</span> f<span class="op">(</span><span class="kw">auto</span> g<span class="op">)</span> <span class="op">{</span></a>
 <a class="sourceLine" id="cb64-2" title="2">  exception_ptr ex;</a>
 <a class="sourceLine" id="cb64-3" title="3">  stop_source stop;</a>
@@ -2004,40 +2106,40 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <a class="sourceLine" id="cb64-7" title="7">    stop<span class="op">.</span>request_stop<span class="op">()</span>;</a>
 <a class="sourceLine" id="cb64-8" title="8">  <span class="op">}}</span>;</a>
 <a class="sourceLine" id="cb64-9" title="9">  <span class="kw">auto</span> print <span class="op">=</span> <span class="op">[&amp;]()</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb64-10" title="10">    <span class="kw">auto</span> w <span class="op">=</span> <span class="op">(</span></a>
-<a class="sourceLine" id="cb64-11" title="11">      <span class="op">!!</span>count <span class="op">?</span> <span class="st">&quot;completed&quot;</span> <span class="op">:</span></a>
-<a class="sourceLine" id="cb64-12" title="12">      <span class="op">!!</span>ex <span class="op">?</span> <span class="st">&quot;failed&quot;</span> <span class="op">:</span></a>
-<a class="sourceLine" id="cb64-13" title="13">      <span class="op">!</span>count <span class="op">?</span> <span class="st">&quot;stopped&quot;</span> <span class="op">:</span> <span class="st">&quot;invalid&quot;</span><span class="op">)</span>;</a>
-<a class="sourceLine" id="cb64-14" title="14">    printf<span class="op">(</span><span class="st">&quot;which </span><span class="sc">%s</span><span class="st">, count </span><span class="sc">%d</span><span class="st">&quot;</span>, w, <span class="op">*</span>count<span class="op">)</span>;</a>
-<a class="sourceLine" id="cb64-15" title="15">  <span class="op">}</span>;</a>
-<a class="sourceLine" id="cb64-16" title="16">  <span class="cf">try</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb64-17" title="17">    scope_done <span class="op">{</span>print<span class="op">()</span>;<span class="op">}</span></a>
-<a class="sourceLine" id="cb64-18" title="18">    count <span class="op">=</span> g<span class="op">(</span>stop<span class="op">.</span>get_token<span class="op">())</span>;</a>
-<a class="sourceLine" id="cb64-19" title="19">  <span class="op">}</span> <span class="cf">catch</span><span class="op">(...)</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb64-20" title="20">    ex <span class="op">=</span> current_exception<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb64-21" title="21">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb64-22" title="22">  print<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb64-23" title="23">  t<span class="op">.</span>join<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb64-10" title="10">    t<span class="op">.</span>join<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb64-11" title="11">    <span class="kw">auto</span> w <span class="op">=</span> <span class="op">(</span></a>
+<a class="sourceLine" id="cb64-12" title="12">      <span class="op">!!</span>count <span class="op">?</span> <span class="st">&quot;completed&quot;</span> <span class="op">:</span></a>
+<a class="sourceLine" id="cb64-13" title="13">      <span class="op">!!</span>ex <span class="op">?</span> <span class="st">&quot;failed&quot;</span> <span class="op">:</span></a>
+<a class="sourceLine" id="cb64-14" title="14">      <span class="op">!</span>count <span class="op">?</span> <span class="st">&quot;stopped&quot;</span> <span class="op">:</span> <span class="st">&quot;invalid&quot;</span><span class="op">)</span>;</a>
+<a class="sourceLine" id="cb64-15" title="15">    printf<span class="op">(</span><span class="st">&quot;which </span><span class="sc">%s</span><span class="st">, count </span><span class="sc">%d</span><span class="st">&quot;</span>, w, <span class="op">*</span>count<span class="op">)</span>;</a>
+<a class="sourceLine" id="cb64-16" title="16">  <span class="op">}</span>;</a>
+<a class="sourceLine" id="cb64-17" title="17">  scope_guard <span class="op">{</span>print<span class="op">()</span>;<span class="op">}</span></a>
+<a class="sourceLine" id="cb64-18" title="18">  <span class="cf">try</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb64-19" title="19">    count <span class="op">=</span> g<span class="op">(</span>stop<span class="op">.</span>get_token<span class="op">())</span>;</a>
+<a class="sourceLine" id="cb64-20" title="20">    <span class="co">// &lt;----</span></a>
+<a class="sourceLine" id="cb64-21" title="21">  <span class="op">}</span> <span class="cf">catch</span><span class="op">(...)</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb64-22" title="22">    ex <span class="op">=</span> current_exception<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb64-23" title="23">  <span class="op">}</span></a>
 <a class="sourceLine" id="cb64-24" title="24"><span class="op">}</span></a></code></pre></div></td>
 </tr>
 </tbody>
 </table>
-<h1 id="conclusions"><span class="header-section-number">5</span> Conclusions<a href="#conclusions" class="self-link"></a></h1>
+<h1 id="conclusions"><span class="header-section-number">6</span> Conclusions<a href="#conclusions" class="self-link"></a></h1>
 <p>The cancellations, covered in <a href="#motivation">Motivation</a> above, are not errors and the functions that were cancelled should complete with serendipitous-success.</p>
 <p>Further, cancellation is not the only case covered in <a href="#motivation">Motivation</a> above, where a function would benefit from completing with serendipitous-success.</p>
 <p>Finally, serendipitous-success is a signal that does not have a good representation using the existing forms of function output.</p>
-<h2 id="function-output"><span class="header-section-number">5.1</span> Function output<a href="#function-output" class="self-link"></a></h2>
+<h2 id="function-output"><span class="header-section-number">6.1</span> Function output<a href="#function-output" class="self-link"></a></h2>
 <p>Here is a short description of the options currently in the language for functions to return values. These options boil down to three channels; return value, out-parameter arguments, and throwing exceptions.</p>
-<h3 id="values"><span class="header-section-number">5.1.1</span> Values<a href="#values" class="self-link"></a></h3>
+<h3 id="values"><span class="header-section-number">6.1.1</span> Values<a href="#values" class="self-link"></a></h3>
 <p>In C, there are three ways to communicate a result:</p>
 <ul>
 <li>return a value</li>
 <li>set value(s) into out-parameter(s)</li>
 <li>call a parameter, that is a function, with arguments(s)</li>
 </ul>
-<h3 id="exceptions"><span class="header-section-number">5.1.2</span> Exceptions<a href="#exceptions" class="self-link"></a></h3>
+<h3 id="exceptions"><span class="header-section-number">6.1.2</span> Exceptions<a href="#exceptions" class="self-link"></a></h3>
 <p>C++ added a third mechanism for communicating a result - throwing exceptions. Adding exception throwing as a separate communication channel allowed code to focus on the path of success and delegate the responsibility for exception handling to the caller by default. C++ made support for exceptions implicit. Functions do not have a mechanism to opt-in to exception support. Functions can opt out of emitting exceptions using <code>noexcept</code>, but the compiler still is responsible for ensuring that an attempt to throw an exception in a <code>noexcept</code> function will result in a call to <code>std::terminate</code>.</p>
-<h3 id="multiplexing"><span class="header-section-number">5.1.3</span> Multiplexing<a href="#multiplexing" class="self-link"></a></h3>
+<h3 id="multiplexing"><span class="header-section-number">6.1.3</span> Multiplexing<a href="#multiplexing" class="self-link"></a></h3>
 <p>These mechanisms can be multiplexed and de-multiplexed, with additional overhead in code size and runtime.</p>
 <p>Examples of mux for return values and out-parameters:</p>
 <ul>
@@ -2050,15 +2152,15 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <blockquote>
 <p>NOTE: while <code>expected</code>, <code>variant</code> and <code>tuple</code> all correspond to C++ language features (exception &amp; return value <code>expected</code>, overload set of functions <code>variant</code>, and multiple arguments to a function <code>tuple</code>), <code>optional</code> does not have a language representation. Pointer is not a language representation as<code>optional</code> is a super-set of Pointer, because <code>optional</code> stores the value when it is valid, while Pointer does not.</p>
 </blockquote>
-<h2 id="contrast-function-taking-a-callback-with-function"><span class="header-section-number">5.2</span> Contrast function-taking-a-callback with function<a href="#contrast-function-taking-a-callback-with-function" class="self-link"></a></h2>
+<h2 id="contrast-function-taking-a-callback-with-function"><span class="header-section-number">6.2</span> Contrast function-taking-a-callback with function<a href="#contrast-function-taking-a-callback-with-function" class="self-link"></a></h2>
 <ul>
 <li><p>A function-taking-a-callback is invoked from a stack frame that may not exist when return-value|exception is emitted</p></li>
 <li><p>The only remaining fragment of the stack frame that invoked the function-taking-a-callback is the callback argument</p></li>
 <li><p>The signals return-value|exception that would be delivered to the stack frame that invoked a function-taking-a-callback must be delivered to the callback argument</p></li>
 </ul>
-<h1 id="proposals"><span class="header-section-number">6</span> Proposals<a href="#proposals" class="self-link"></a></h1>
+<h1 id="proposals"><span class="header-section-number">7</span> Proposals<a href="#proposals" class="self-link"></a></h1>
 <p>There are designs that can support value and error and serendipitous-success for both library and language.</p>
-<h2 id="library"><span class="header-section-number">6.1</span> Library<a href="#library" class="self-link"></a></h2>
+<h2 id="library"><span class="header-section-number">7.1</span> Library<a href="#library" class="self-link"></a></h2>
 <p>When adding async functions to the library there must be a way to represent a value and an error and serendipitous-success.</p>
 <p>Currently the ways to represent value and error were covered in <a href="#stdoptional"><code>std::optional</code></a>, <a href="#fgh"><code>f(g(h()))</code></a>, <a href="#coroutine-generator">coroutine generator</a>, <a href="#callbacks">Callbacks</a> and <a href="#stack-unwinding">stack unwinding</a> above. Of these, the only one with a working solution for a value and an error and serendipitous-success is the <a href="#multiple-function-style">multiple function style</a> in <a href="#callbacks">Callbacks</a>. The <code>async_accept_completion</code> example is reproduced here for convenience:</p>
 <div class="sourceCode" id="cb65"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb65-1" title="1"><span class="kw">struct</span> async_accept_completion <span class="op">{</span></a>
@@ -2082,9 +2184,9 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <li>overloads of each method allow different types to be supported without use of <code>std::variant</code></li>
 <li>overloads of each method allow different numbers of arguments to be supported without use of <code>std::optional</code> or <code>std::variant&lt;std::tuple&lt;&gt;&gt;</code></li>
 </ul>
-<h2 id="language"><span class="header-section-number">6.2</span> Language<a href="#language" class="self-link"></a></h2>
+<h2 id="language"><span class="header-section-number">7.2</span> Language<a href="#language" class="self-link"></a></h2>
 <p>As noted in <a href="#stdoptional"><code>std::optional</code></a> above, there is no language feature that supports serendipitous-success. Here are some thoughts on what this might look like in the language.</p>
-<h3 id="co_done-catch_co_done"><span class="header-section-number">6.2.1</span> co_done &amp; catch_co_done<a href="#co_done-catch_co_done" class="self-link"></a></h3>
+<h3 id="co_done-catch_co_done"><span class="header-section-number">7.2.1</span> co_done &amp; catch_co_done<a href="#co_done-catch_co_done" class="self-link"></a></h3>
 <p>One option is to tie this to coroutines, and add <code>co_done</code> to emit the signal, <code>operator co_done()</code> to customize the signal and <code>try {} catch_co_done() {}</code> to intercept the signal.</p>
 <p>Pros: familiar to coroutines</p>
 <p>Cons:</p>
@@ -2093,7 +2195,7 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <li>explicit scope</li>
 <li>requires adding try blocks to intercept a signal that is not an error</li>
 </ul>
-<h3 id="scope-library"><span class="header-section-number">6.2.2</span> scope library<a href="#scope-library" class="self-link"></a></h3>
+<h3 id="scope-library"><span class="header-section-number">7.2.2</span> scope library<a href="#scope-library" class="self-link"></a></h3>
 <p>Another option is to provide a new model for handling implicit signals in a scope.</p>
 <p>There is a library that is adding a new model for handling implicit signals in a scope. The scope library <span class="citation" data-cites="P0052R10">[<a href="#ref-P0052R10" role="doc-biblioref">P0052R10</a>]</span> introduces <code>scope_exit</code>, <code>scope_fail</code> and <code>scope_success</code>. These are used to introduce new implicit scopes (no braces required) and invoke a function at the end of that scope.</p>
 <p>The paper contains a simple example:</p>
@@ -2113,44 +2215,118 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <li>depends on TLS state to detect success and fail, which may not be available on all platforms. Also, the detection can be confused when exceptions are transported or continuations resumed within the scope of an instance of the <code>scope_success</code> and <code>scope_fail</code> types.</li>
 <li>there is no support for serendipitous-success and adding it would require adding more of the fragile TLS dependencies or a language feature.</li>
 </ul>
-<h3 id="scope_success-scope_fail-scope_done-blocks"><span class="header-section-number">6.2.3</span> scope_success, scope_fail, scope_done blocks<a href="#scope_success-scope_fail-scope_done-blocks" class="self-link"></a></h3>
+<h3 id="cancel_if"><span class="header-section-number">7.2.3</span> cancel_if<a href="#cancel_if" class="self-link"></a></h3>
+<p>A different approach is to represent the cancellation as a boolean condition that evaluates to true when the desired result has been achieved and this will trigger the stack to unwind. Here is a syntax for a cancellable effort that uses a boolean condition:</p>
+<div class="sourceCode" id="cb67"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb67-1" title="1"><span class="cf">try</span></a>
+<a class="sourceLine" id="cb67-2" title="2">    <span class="op">{</span></a>
+<a class="sourceLine" id="cb67-3" title="3">    <span class="co">// cancellable effort…</span></a>
+<a class="sourceLine" id="cb67-4" title="4">    <span class="op">}</span></a>
+<a class="sourceLine" id="cb67-5" title="5">cancel_if <span class="op">(</span> condition <span class="op">)</span></a>
+<a class="sourceLine" id="cb67-6" title="6">    <span class="op">{</span></a>
+<a class="sourceLine" id="cb67-7" title="7">    <span class="co">// code to execute if the effort is cancelled</span></a>
+<a class="sourceLine" id="cb67-8" title="8">    <span class="co">// due to this condition…</span></a>
+<a class="sourceLine" id="cb67-9" title="9">    <span class="op">}</span></a></code></pre></div>
+<p>And for a cancellation point:</p>
+<p>cancel_if_possible(); // A library function. Another option would be to make it a statement and lose the parentheses.</p>
+<blockquote>
+<p>“I’m not particularly attached to any of the keywords here. I’m only reusing “try” out of parsimony. Bjarne has said that “try” wasn’t in the original design for exceptions, but just added because people felt uncomfortable introducing a block without a keyword to head it.&quot; <em>Lisa Lippincott</em></p>
+</blockquote>
+<p>A simplistic approximation of the behavior could be expressed with setjmp/longjmp if longjmp respected destructors:</p>
+<div class="sourceCode" id="cb68"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb68-1" title="1">jmp_buf buf;</a>
+<a class="sourceLine" id="cb68-2" title="2"><span class="kw">const</span> <span class="kw">auto</span> cancel_if_possible <span class="op">=</span> <span class="op">[&amp;]()</span></a>
+<a class="sourceLine" id="cb68-3" title="3">    <span class="op">{</span></a>
+<a class="sourceLine" id="cb68-4" title="4">    <span class="cf">try</span></a>
+<a class="sourceLine" id="cb68-5" title="5">        <span class="op">{</span></a>
+<a class="sourceLine" id="cb68-6" title="6">        <span class="cf">if</span> <span class="op">(</span> condition <span class="op">)</span> longjmp<span class="op">(</span> buf, <span class="dv">1</span> <span class="op">)</span>;</a>
+<a class="sourceLine" id="cb68-7" title="7">        <span class="op">}</span></a>
+<a class="sourceLine" id="cb68-8" title="8">    <span class="cf">catch</span> <span class="op">(</span> <span class="op">...</span> <span class="op">)</span></a>
+<a class="sourceLine" id="cb68-9" title="9">        <span class="op">{}</span></a>
+<a class="sourceLine" id="cb68-10" title="10">    <span class="op">}</span>;</a>
+<a class="sourceLine" id="cb68-11" title="11"></a>
+<a class="sourceLine" id="cb68-12" title="12"><span class="cf">if</span> <span class="op">(</span> <span class="op">!</span>setjmp<span class="op">(</span> buf <span class="op">)</span> <span class="op">)</span></a>
+<a class="sourceLine" id="cb68-13" title="13">    <span class="op">{</span></a>
+<a class="sourceLine" id="cb68-14" title="14">    <span class="co">// cancellable effort…</span></a>
+<a class="sourceLine" id="cb68-15" title="15">    <span class="op">}</span></a>
+<a class="sourceLine" id="cb68-16" title="16"><span class="cf">else</span></a>
+<a class="sourceLine" id="cb68-17" title="17">    <span class="op">{</span></a>
+<a class="sourceLine" id="cb68-18" title="18">    <span class="co">// code to execute if the effort is cancelled</span></a>
+<a class="sourceLine" id="cb68-19" title="19">    <span class="co">// due to this condition…</span></a>
+<a class="sourceLine" id="cb68-20" title="20">    <span class="op">}</span></a></code></pre></div>
+<p>Here’s the detailed behavior: each <code>cancel_if</code> block associates a “cancellation condition” and a handler block with a cancellable effort. The lifetime of the cancellation condition is the duration of the cancellable effort. If more than one cancellation condition is associated with the same effort, the lifetime of an earlier-declared condition starts before and ends after the lifetime of a later-declared condition. [This ordering is arbitrary.]</p>
+<p>During some parts of its lifetime, a cancellation condition may be “suspended.” During its lifetime, when not suspended, a cancellation condition is “active.” A cancellation condition is active at the start of its lifetime.</p>
+<p>The <code>cancel_if_possible</code> statement evaluates the active cancellation conditions, from eldest to youngest. If evaluation of a condition produces a true result, no further conditions are evaluated, the stack is unwound to the end of the associated cancellable effort, and control is transferred to the corresponding handler. [Eldest-to-youngest because when a larger effort may be cancelled that includes all the younger cancellable efforts.] If evaluation of a cancellation condition exits with an exception, the exception is handled, and the condition is treated as if it had produced false. If no cancellation produces true, execution continues with the following statement.</p>
+<p>For each of the following events, each cancellation condition that is active at the start of the event is suspended for the duration of the event; after the event, such conditions are reactivated if their lifetime has not ended.</p>
+<ul>
+<li>Stack unwinding</li>
+<li>The evaluation of a cancellation condition</li>
+<li>The execution of a noexcept function</li>
+</ul>
+<blockquote>
+<p>[Here “noexcept” should be taken to mean “no early exit” — this will cause noexcept function to never be cancelled. This is preferred to introducing “nocancel” because the guarantee callers need doesn’t distinguish between exceptions and cancellation. This assumes that there is no use for guarantees of “no cancellation but maybe exceptions” or “no exceptions but maybe cancellation.” The name “noexcept” is unfortunate in this regard.]</p>
+</blockquote>
+<blockquote>
+<p>[Alternatively, terminate when a noexcept function is cancelled, and provide an explicit way to suspend all cancellation conditions]</p>
+</blockquote>
+<p>Just like we need exception_ptr to sneak exceptions across noexcept boundaries, we need a mechanism to sneak cancellation conditions across noexcept boundaries, but in the opposite direction. I think a library class will do the trick:</p>
+<div class="sourceCode" id="cb69"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb69-1" title="1"><span class="kw">class</span> cancellation_test_functor</a>
+<a class="sourceLine" id="cb69-2" title="2">    <span class="op">{</span></a>
+<a class="sourceLine" id="cb69-3" title="3">    cancellation_test_functor<span class="op">()</span> <span class="kw">noexcept</span>;</a>
+<a class="sourceLine" id="cb69-4" title="4">        <span class="co">// Constructs a functor representing the cancellation conditions </span></a>
+<a class="sourceLine" id="cb69-5" title="5">        <span class="co">// active at the time of construction.</span></a>
+<a class="sourceLine" id="cb69-6" title="6"></a>
+<a class="sourceLine" id="cb69-7" title="7">    cancellation_test_functor<span class="op">(</span> <span class="kw">const</span> cancellation_test_functor<span class="op">&amp;</span> s <span class="op">)</span> <span class="kw">noexcept</span>;</a>
+<a class="sourceLine" id="cb69-8" title="8">        <span class="co">// Constructs a functor representing the cancellation conditions </span></a>
+<a class="sourceLine" id="cb69-9" title="9">        <span class="co">// represented by s.</span></a>
+<a class="sourceLine" id="cb69-10" title="10"></a>
+<a class="sourceLine" id="cb69-11" title="11">    <span class="dt">bool</span> <span class="kw">operator</span><span class="op">()</span> <span class="kw">const</span> <span class="kw">noexcept</span>;</a>
+<a class="sourceLine" id="cb69-12" title="12">        <span class="co">// Evaluates the represented cancellation conditions, from eldest </span></a>
+<a class="sourceLine" id="cb69-13" title="13">        <span class="co">// to youngest, stopping when one produces true.</span></a>
+<a class="sourceLine" id="cb69-14" title="14">        <span class="co">// If the lifetime of any represented condition has ended, </span></a>
+<a class="sourceLine" id="cb69-15" title="15">        <span class="co">// this function has undefined behavior.</span></a>
+<a class="sourceLine" id="cb69-16" title="16">        <span class="co">// If any evaluated condition exits with an exception, </span></a>
+<a class="sourceLine" id="cb69-17" title="17">        <span class="co">// it is treated as returning false.</span></a>
+<a class="sourceLine" id="cb69-18" title="18">        <span class="co">// Returns true if any condition produces true; otherwise false.</span></a>
+<a class="sourceLine" id="cb69-19" title="19">  <span class="op">}</span>;</a></code></pre></div>
+<p>It is expected that this class can be implemented with just a pointer or two — it can just remember the point on the stack where it’s constructed (and use exception tables), or point to a range in a data structure tracking the stack of active conditions.</p>
+<p>This class doesn’t solve the synchronization issues of moving conditions from one thread to another. Since these conditions essentially use lambda-capture, that would be dangerous. A mechanism to actively signal a cancellation request seems better than polling a condition across thread boundaries. Perhaps an “I don’t need the answer to this” signal should be added to the future class.</p>
+<h3 id="scope_success-scope_fail-scope_done-blocks"><span class="header-section-number">7.2.4</span> scope_success, scope_fail, scope_done blocks<a href="#scope_success-scope_fail-scope_done-blocks" class="self-link"></a></h3>
 <p>A language feature based on the <code>scope_guard</code> pattern would be another way to introduce support for fail/success/done interception.</p>
 <p>bikeshedding aside..</p>
 <p>Imagine that <code>break return</code> is a statement that returns from the current function with serendipitous-success.</p>
 <p>Imagine that <code>scope_success</code>, <code>scope_fail</code> and <code>scope_done</code> were keywords that introduced statements that started an implicit scope (same rules as variable declarations) and introduced a block to run at the end of that scope. The <code>scope_..</code> blocks introduce a new scope within the current scope of the current function and can participate in the control flow of the current scope of the current function (using <code>goto</code>, <code>return</code>, <code>break return</code>, <code>break</code> and <code>continue</code>).</p>
 <p>Finally, imagine that any type is allowed to implement <code>operator break return()</code>. <code>operator break return()</code> will be called when an object instance goes out of scope with serendipitous-success in flight.</p>
 <p>Here is the example from the scope paper <span class="citation" data-cites="P0052R10">[<a href="#ref-P0052R10" role="doc-biblioref">P0052R10</a>]</span> with this proposal:</p>
-<div class="sourceCode" id="cb67"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb67-1" title="1"><span class="dt">void</span> grow<span class="op">(</span>vector<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;&amp;</span> v<span class="op">){</span></a>
-<a class="sourceLine" id="cb67-2" title="2">  scope_success <span class="op">{</span> cout <span class="op">&lt;&lt;</span> <span class="st">&quot;Good!&quot;</span> <span class="op">&lt;&lt;</span> endl; <span class="op">}</span>;</a>
-<a class="sourceLine" id="cb67-3" title="3">  v<span class="op">.</span>resize<span class="op">(</span><span class="dv">1024</span><span class="op">)</span>;</a>
-<a class="sourceLine" id="cb67-4" title="4"><span class="op">}</span></a></code></pre></div>
+<div class="sourceCode" id="cb70"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb70-1" title="1"><span class="dt">void</span> grow<span class="op">(</span>vector<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;&amp;</span> v<span class="op">){</span></a>
+<a class="sourceLine" id="cb70-2" title="2">  scope_success <span class="op">{</span> cout <span class="op">&lt;&lt;</span> <span class="st">&quot;Good!&quot;</span> <span class="op">&lt;&lt;</span> endl; <span class="op">}</span>;</a>
+<a class="sourceLine" id="cb70-3" title="3">  v<span class="op">.</span>resize<span class="op">(</span><span class="dv">1024</span><span class="op">)</span>;</a>
+<a class="sourceLine" id="cb70-4" title="4"><span class="op">}</span></a></code></pre></div>
 <p>Here is the example from <a href="#stdoptional"><code>std::optional</code></a> in this paper with this proposal:</p>
-<div class="sourceCode" id="cb68"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb68-1" title="1"><span class="dt">int</span> op<span class="op">()</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb68-2" title="2">  <span class="cf">if</span> <span class="op">(!</span>has_feature<span class="op">())</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb68-3" title="3">    <span class="cf">break</span> <span class="cf">return</span>; <span class="co">// emits serendipitous-success</span></a>
-<a class="sourceLine" id="cb68-4" title="4">  <span class="op">}</span></a>
-<a class="sourceLine" id="cb68-5" title="5">  <span class="cf">return</span> feature<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb68-6" title="6"><span class="op">}</span></a>
-<a class="sourceLine" id="cb68-7" title="7"></a>
-<a class="sourceLine" id="cb68-8" title="8"><span class="dt">void</span> foo<span class="op">()</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb68-9" title="9">  <span class="co">// ..</span></a>
-<a class="sourceLine" id="cb68-10" title="10">  scope_done <span class="op">{</span> cout <span class="op">&lt;&lt;</span> <span class="st">&quot;feature unsupported!&quot;</span> <span class="op">&lt;&lt;</span> endl; <span class="op">}</span>;</a>
-<a class="sourceLine" id="cb68-11" title="11">  <span class="kw">auto</span> i <span class="op">=</span> op<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb68-12" title="12">  <span class="co">// use i..</span></a>
-<a class="sourceLine" id="cb68-13" title="13"><span class="op">}</span> <span class="co">// jumps here, when the feature is </span></a>
-<a class="sourceLine" id="cb68-14" title="14">  <span class="co">// not supported, runs scope_done and</span></a>
-<a class="sourceLine" id="cb68-15" title="15">  <span class="co">// emits serendipitous-success</span></a>
-<a class="sourceLine" id="cb68-16" title="16"></a>
-<a class="sourceLine" id="cb68-17" title="17"><span class="dt">void</span> bar<span class="op">()</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb68-18" title="18">  <span class="co">// ..</span></a>
-<a class="sourceLine" id="cb68-19" title="19">  scope_done <span class="op">{</span> <span class="cf">return</span>; <span class="op">}</span>;</a>
-<a class="sourceLine" id="cb68-20" title="20">  <span class="kw">auto</span> i <span class="op">=</span> op<span class="op">()</span>;</a>
-<a class="sourceLine" id="cb68-21" title="21">  <span class="co">// use i..</span></a>
-<a class="sourceLine" id="cb68-22" title="22"><span class="op">}</span> <span class="co">// jumps here, when the feature is </span></a>
-<a class="sourceLine" id="cb68-23" title="23">  <span class="co">// not supported in op(), runs the </span></a>
-<a class="sourceLine" id="cb68-24" title="24">  <span class="co">// scope_done block which uses return </span></a>
-<a class="sourceLine" id="cb68-25" title="25">  <span class="co">// to exit bar() normally. bar() does </span></a>
-<a class="sourceLine" id="cb68-26" title="26">  <span class="co">// not emit serendipitous-success</span></a></code></pre></div>
+<div class="sourceCode" id="cb71"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb71-1" title="1"><span class="dt">int</span> op<span class="op">()</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb71-2" title="2">  <span class="cf">if</span> <span class="op">(!</span>has_feature<span class="op">())</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb71-3" title="3">    <span class="cf">break</span> <span class="cf">return</span>; <span class="co">// emits serendipitous-success</span></a>
+<a class="sourceLine" id="cb71-4" title="4">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb71-5" title="5">  <span class="cf">return</span> feature<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb71-6" title="6"><span class="op">}</span></a>
+<a class="sourceLine" id="cb71-7" title="7"></a>
+<a class="sourceLine" id="cb71-8" title="8"><span class="dt">void</span> foo<span class="op">()</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb71-9" title="9">  <span class="co">// ..</span></a>
+<a class="sourceLine" id="cb71-10" title="10">  scope_done <span class="op">{</span> cout <span class="op">&lt;&lt;</span> <span class="st">&quot;feature unsupported!&quot;</span> <span class="op">&lt;&lt;</span> endl; <span class="op">}</span>;</a>
+<a class="sourceLine" id="cb71-11" title="11">  <span class="kw">auto</span> i <span class="op">=</span> op<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb71-12" title="12">  <span class="co">// use i..</span></a>
+<a class="sourceLine" id="cb71-13" title="13"><span class="op">}</span> <span class="co">// jumps here, when the feature is </span></a>
+<a class="sourceLine" id="cb71-14" title="14">  <span class="co">// not supported, runs scope_done and</span></a>
+<a class="sourceLine" id="cb71-15" title="15">  <span class="co">// emits serendipitous-success</span></a>
+<a class="sourceLine" id="cb71-16" title="16"></a>
+<a class="sourceLine" id="cb71-17" title="17"><span class="dt">void</span> bar<span class="op">()</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb71-18" title="18">  <span class="co">// ..</span></a>
+<a class="sourceLine" id="cb71-19" title="19">  scope_done <span class="op">{</span> <span class="cf">return</span>; <span class="op">}</span>;</a>
+<a class="sourceLine" id="cb71-20" title="20">  <span class="kw">auto</span> i <span class="op">=</span> op<span class="op">()</span>;</a>
+<a class="sourceLine" id="cb71-21" title="21">  <span class="co">// use i..</span></a>
+<a class="sourceLine" id="cb71-22" title="22"><span class="op">}</span> <span class="co">// jumps here, when the feature is </span></a>
+<a class="sourceLine" id="cb71-23" title="23">  <span class="co">// not supported in op(), runs the </span></a>
+<a class="sourceLine" id="cb71-24" title="24">  <span class="co">// scope_done block which uses return </span></a>
+<a class="sourceLine" id="cb71-25" title="25">  <span class="co">// to exit bar() normally. bar() does </span></a>
+<a class="sourceLine" id="cb71-26" title="26">  <span class="co">// not emit serendipitous-success</span></a></code></pre></div>
 <p>Pros:</p>
 <ul>
 <li>implicit scope</li>
@@ -2162,10 +2338,10 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <ul>
 <li>composition with existing functions that do not support serendipitous-success need the compiler+runtime to call `std::terminate()</li>
 </ul>
-<h3 id="afterthought-converting-undefined-behaviour-to-defined-behaviour"><span class="header-section-number">6.2.4</span> Afterthought: converting undefined behaviour to defined behaviour<a href="#afterthought-converting-undefined-behaviour-to-defined-behaviour" class="self-link"></a></h3>
+<h3 id="afterthought-converting-undefined-behaviour-to-defined-behaviour"><span class="header-section-number">7.2.5</span> Afterthought: converting undefined behaviour to defined behaviour<a href="#afterthought-converting-undefined-behaviour-to-defined-behaviour" class="self-link"></a></h3>
 <p>Something that has occurred only after imagining a language solution, is how language support for serendipitous-success would allow converting undefined-behaviour into defined-behaviour in a new and clean way. A method that could not return a value and should not throw an exception can use <code>break return</code> to return serendipitous-success. serendipitous-success can propagate up until handled without requiring any explicit code for serendipitous-success in the intermediate functions.</p>
 <p>Some cooperation between compiler and runtime would be required to turn an unhandled serendipitous-success into <code>std::terminate()</code>. One example of an unhandled serendipitous-success would be when a calling function was compiled without support for serendipitous-success and a callee returned serendipitous-success. This case would need to result in <code>std::terminate()</code> and this would need to be enforced by the compiler+runtime of the callee not the caller.</p>
-<h1 id="credits"><span class="header-section-number">7</span> Credits<a href="#credits" class="self-link"></a></h1>
+<h1 id="credits"><span class="header-section-number">8</span> Credits<a href="#credits" class="self-link"></a></h1>
 <p>This paper was influenced by hosts of people over decades.</p>
 <ul>
 <li><strong>Marc Barbour</strong> and <strong>Mark Lawrence</strong> were fundamental to Kirk’s first attempt to design more regular callbacks in a COM environment.</li>
@@ -2178,10 +2354,10 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <li><strong>Lewis Baker</strong>’s excellent <code>stop_source</code>/<code>stop_token</code> design in <span class="citation" data-cites="P0660R9">[<a href="#ref-P0660R9" role="doc-biblioref">P0660R9</a>]</span></li>
 <li><em>CppCon</em>, <em>CppNow</em>, <em>CppRussia</em> and <em>CERN</em> (and the people behind those including; <strong>Jon Kalb</strong>, <strong>Bryce Adelstein-Lebach</strong>, <strong>Sergey Platonov</strong>, <strong>Axel Naumann</strong>) for all the opportunities to communicate the vision for cancellation in C++</li>
 <li><strong>Gor Nishanov</strong> for the excellent coroutines in C++20 and the shout-outs and support for rxcpp over the years.</li>
-<li><strong>Lisa Lippincott</strong> for coining ‘serendipitous-success’ to explain what the result of cancellation is rather than what it is not.</li>
+<li><strong>Lisa Lippincott</strong> for coining ‘serendipitous-success’ to explain what the result of cancellation <strong>is</strong> rather than what it is not and for contributing content to this paper.</li>
 </ul>
 <p>`</p>
-<h1 id="references"><span class="header-section-number">8</span> References<a href="#references" class="self-link"></a></h1>
+<h1 id="references"><span class="header-section-number">9</span> References<a href="#references" class="self-link"></a></h1>
 
 <div id="refs" role="doc-bibliography">
 <div id="ref-N4771">
@@ -2200,6 +2376,10 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <p>[P0660R9] Nicolai Josuttis, Lewis Baker, Billy O’Neal, Herb Sutter, Anthony Williams. 2019. Stop Token and Joining Thread. <br />
 <a href="https://wg21.link/p0660r9">https://wg21.link/p0660r9</a></p>
 </div>
+<div id="ref-P0709R4">
+<p>[P0709R4] Herb Sutter. 2019. Zero-overhead deterministic exceptions: Throwing values. <br />
+<a href="https://wg21.link/p0709r4">https://wg21.link/p0709r4</a></p>
+</div>
 <div id="ref-P0876R5">
 <p>[P0876R5] Oliver Kowalke, Nat Goodspeed. 2019. fiber_context - fibers without scheduler. <br />
 <a href="https://wg21.link/p0876r5">https://wg21.link/p0876r5</a></p>
@@ -2211,6 +2391,10 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <div id="ref-P1055R0">
 <p>[P1055R0] Kirk Shoop, Eric Niebler, Lee Howes. 2018. A Modest Executor Proposal. <br />
 <a href="https://wg21.link/p1055r0">https://wg21.link/p1055r0</a></p>
+</div>
+<div id="ref-P1095R0">
+<p>[P1095R0] Niall Douglas. 2018. Zero overhead deterministic failure - A unified mechanism for C and C++. <br />
+<a href="https://wg21.link/p1095r0">https://wg21.link/p1095r0</a></p>
 </div>
 <div id="ref-P1341R0">
 <p>[P1341R0] Lewis Baker. 2018. Unifying Asynchronous APIs in the Standard Library. <br />
@@ -2224,9 +2408,9 @@ switch the term neither-a-result-nor-an-error to serendipitous-success</li>
 <p>[P1660R0] Jared Hoberock, Michael Garland, Bryce Adelstein Lelbach, Michał Dominiak, Eric Niebler, Kirk Shoop, Lewis Baker, Lee Howes, David S. Hollman, Gordon Brown. 2019. A Compromise Executor Design Sketch. <br />
 <a href="https://wg21.link/p1660r0">https://wg21.link/p1660r0</a></p>
 </div>
-<div id="ref-P1678R0">
-<p>[P1678R0] Kirk Shoop. 2019. Callbacks and Composition. <br />
-<a href="https://wg21.link/p1678r0">https://wg21.link/p1678r0</a></p>
+<div id="ref-P1678R1">
+<p>[P1678R1] Kirk Shoop. 2019. Callbacks and Composition. <br />
+<a href="https://wg21.link/p1678r1">https://wg21.link/p1678r1</a></p>
 </div>
 <div id="ref-P1745R0">
 <p>[P1745R0] Lewis Baker. 2019. Coroutine changes for C++20 and beyond. <br />
